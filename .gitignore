@@ -1,0 +1,4 @@
+logs
+config.yaml
+docker-compose.infra.yaml
+/cmd/news-release-platform

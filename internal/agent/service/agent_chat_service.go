@@ -72,7 +72,7 @@ func (svc *agentChatServiceImpl) ChatStream(ctx context.Context, userID int, aut
 	// 3. 加载历史消息
 	historyMessages, err := svc.loadHistoryMessages(ctx, sessionID)
 	if err != nil {
-		logrus.Warnf("加载历史消息失败: %v, 将继续无历史消息对话", err)
+		// logrus.Warnf("加载历史消息失败: %v, 将继续无历史消息对话", err)
 		historyMessages = []llm.Message{}
 	}
 
@@ -80,6 +80,7 @@ func (svc *agentChatServiceImpl) ChatStream(ctx context.Context, userID int, aut
 	systemPrompt := engine.BuildSystemPrompt(userID, "")
 
 	// 5. 构建完整消息列表
+	// 依次拼接系统提示词、历史消息、用户消息
 	messages := make([]llm.Message, 0, len(historyMessages)+2)
 	messages = append(messages, llm.Message{
 		Role:    "system",
@@ -182,29 +183,36 @@ func (svc *agentChatServiceImpl) createDefaultProvider() (llm.LLMProvider, error
 
 // loadHistoryMessages 加载历史消息并转换为LLM消息格式
 func (svc *agentChatServiceImpl) loadHistoryMessages(ctx context.Context, sessionID string) ([]llm.Message, error) {
+	// 数据库查询
 	messages, err := svc.messageRepo.ListBySessionID(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
+	// 控制最大历史消息数
 	maxHistory := svc.cfg.Agent.MaxHistoryMessages
 	if maxHistory <= 0 {
 		maxHistory = 50
 	}
 	startIdx := 0
+	// 如果消息数超过最大历史消息数，计算开始索引，确保只加载最近的maxHistory条消息
 	if len(messages) > maxHistory {
 		startIdx = len(messages) - maxHistory
 	}
 
 	result := make([]llm.Message, 0, len(messages)-startIdx)
+
+	// 循环处理每个消息：将数据库数据转化为LLM消息格式
 	for i := startIdx; i < len(messages); i++ {
 		msg := messages[i]
+		// 转换为LLM消息格式
 		llmMsg := llm.Message{
 			Role:             msg.Role,
 			Content:          msg.Content,
 			ReasoningContent: msg.ReasoningContent,
 		}
 
+		// 如果是Agent工具调用，解析为LLM ToolCall格式
 		if msg.ToolCalls != "" && msg.Role == "assistant" {
 			var toolCalls []llm.ToolCall
 			if err := json.Unmarshal([]byte(msg.ToolCalls), &toolCalls); err == nil {
@@ -212,6 +220,7 @@ func (svc *agentChatServiceImpl) loadHistoryMessages(ctx context.Context, sessio
 			}
 		}
 
+		// 如果是工具消息，添加工具调用ID和技能结果
 		if msg.Role == "tool" {
 			llmMsg.ToolCallID = msg.ToolCallID
 			llmMsg.Name = msg.SkillName
@@ -220,16 +229,18 @@ func (svc *agentChatServiceImpl) loadHistoryMessages(ctx context.Context, sessio
 			}
 		}
 
+		// 拼接消息
 		result = append(result, llmMsg)
 	}
 
 	return result, nil
 }
 
-// fanOutAndPersist 独占消费引擎事件channel，完成SSE转发和消息持久化
-// 这是唯一的eventCh消费者，解决了channel竞争和context取消两个问题
+// fanOutAndPersist 完成SSE转发和消息持久化
 func (svc *agentChatServiceImpl) fanOutAndPersist(
+	// 只读channel：Engine输出的事件
 	engineEventCh <-chan engine.AgentEvent,
+	// 只写channel：转发给Controller的SSE通道
 	sseCh chan<- engine.AgentEvent,
 	sessionID string,
 	userID int,
@@ -259,6 +270,7 @@ func (svc *agentChatServiceImpl) fanOutAndPersist(
 	var toolCalls []llm.ToolCall
 	var toolMessages []model.Message
 
+	// 主循环：消费 Engine 事件，完成SSE转发和消息持久化
 	for event := range engineEventCh {
 		// 转发所有事件到SSE channel（Controller从这里读取）
 		sseCh <- event

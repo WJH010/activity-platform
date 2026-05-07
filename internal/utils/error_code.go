@@ -35,6 +35,7 @@ const (
 	ErrCodeAuthRequired        = 40006 // 需要先认证（未登录时访问需登录的资源）
 	ErrCodeGetUserIDFailed     = 40007 // 获取用户ID失败（如从 Token 中提取用户 ID 失败）
 	ErrCodeInvalidRole         = 40008 // 角色无效（如角色不存在、角色权限错误）
+	ErrCodeTokenRevoked        = 40009 // 令牌已撤销（如用户已登出，token被加入黑名单）
 
 	// 服务器/系统相关
 	ErrCodeServerInternalError = 50001 // 服务器内部错误（如代码异常、未捕获的异常）

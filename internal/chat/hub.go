@@ -77,22 +77,23 @@ func NewHub(chatService service.ChatService) *Hub {
 	}
 }
 
+// Run 启动 Hub 实例，持续监听注册、注销、广播和直接消息通道。
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
 			h.Mu.Lock()
 			if client.GroupID == 0 {
-				// 这是一个个人通知客户端
+				// 个人通知客户端 → 存入 UserClients
 				h.UserClients[client.UserID] = client
-				logrus.Infof("个人通知客户端 %d 已注册", client.UserID)
+				// logrus.Infof("个人通知客户端 %d 已注册", client.UserID)
 			} else {
-				// 这是一个群聊客户端
+				// 群聊客户端 → 存入 Groups[groupID]
 				if _, ok := h.Groups[client.GroupID]; !ok {
 					h.Groups[client.GroupID] = make(map[*Client]bool)
 				}
 				h.Groups[client.GroupID][client] = true
-				logrus.Infof("群聊客户端 %d 注册到群组 %d", client.UserID, client.GroupID)
+				// logrus.Infof("群聊客户端 %d 注册到群组 %d", client.UserID, client.GroupID)
 			}
 			h.Mu.Unlock()
 
@@ -103,7 +104,7 @@ func (h *Hub) Run() {
 				if _, ok := h.UserClients[client.UserID]; ok {
 					delete(h.UserClients, client.UserID)
 					close(client.Send)
-					logrus.Infof("个人通知客户端 %d 已注销", client.UserID)
+					// logrus.Infof("个人通知客户端 %d 已注销", client.UserID)
 				}
 			} else {
 				// 群聊客户端注销
@@ -114,7 +115,7 @@ func (h *Hub) Run() {
 						if len(h.Groups[client.GroupID]) == 0 {
 							delete(h.Groups, client.GroupID)
 						}
-						logrus.Infof("群聊客户端 %d 从群组 %d 注销", client.UserID, client.GroupID)
+						// logrus.Infof("群聊客户端 %d 从群组 %d 注销", client.UserID, client.GroupID)
 					}
 				}
 			}
@@ -123,10 +124,12 @@ func (h *Hub) Run() {
 		case payload := <-h.Broadcast:
 			h.Mu.RLock()
 			if clients, ok := h.Groups[payload.GroupID]; ok {
+				// 广播消息到群组中的所有客户端
 				for client := range clients {
 					select {
 					case client.Send <- payload.Data:
 					default:
+						// 如果客户端的 Send 通道已满，说明消费者（WritePump）太慢或已死，直接断开该客户端
 						close(client.Send)
 						delete(clients, client)
 					}
@@ -155,8 +158,10 @@ func (c *Client) ReadPump() {
 		c.Hub.Unregister <- c
 		c.Conn.Close()
 	}()
+	// 设置读取限制和超时时间
 	c.Conn.SetReadLimit(maxMessageSize)
 	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	// 收到 Pong 时重置超时
 	c.Conn.SetPongHandler(func(string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	for {

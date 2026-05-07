@@ -5,6 +5,7 @@ import (
 	"activity-platform/internal/database"
 	filerepo "activity-platform/internal/file/repository"
 	"activity-platform/internal/middleware"
+	"activity-platform/internal/redis"
 	"activity-platform/internal/routes"
 	"activity-platform/internal/utils"
 	"log"
@@ -35,6 +36,18 @@ func main() {
 
 	sqlDB, _ := db.DB() // 获取底层的 SQL 数据库连接
 	defer sqlDB.Close() // 确保程序退出时关闭数据库连接，释放资源
+
+	// 初始化Redis
+	rdb, err := redis.NewRedisClient(cfg.Redis)
+	if err != nil {
+		logrus.Warnf("Redis初始化失败（Token黑名单不可用）: %v", err)
+		// Redis不可用不阻塞启动，黑名单功能降级为不可用
+	}
+	defer func() {
+		if rdb != nil {
+			rdb.Close()
+		}
+	}()
 
 	// 4.创建MinIO存储实例
 	minioRepo, err := filerepo.NewMinIORepository(

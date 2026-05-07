@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/sirupsen/logrus"
 )
 
 // EngineConfig 引擎配置
@@ -112,7 +110,7 @@ func (e *Engine) runReactLoop(ctx context.Context, messages []llm.Message, tools
 	var totalReasoningContent string // 跨轮次累积推理内容
 
 	for round := 0; round < e.config.MaxReactRounds; round++ {
-		logrus.Debugf("[AgentEngine] ReAct Round %d/%d", round+1, e.config.MaxReactRounds)
+		// logrus.Debugf("[AgentEngine] ReAct Round %d/%d", round+1, e.config.MaxReactRounds)
 
 		streamCh, err := e.provider.ChatStream(ctx, workingMessages, tools)
 		if err != nil {
@@ -127,6 +125,7 @@ func (e *Engine) runReactLoop(ctx context.Context, messages []llm.Message, tools
 		var reasoningBuf strings.Builder // 本轮推理内容累积
 		var toolCalls []llm.ToolCall
 
+		// 处理流式响应,逐个处理每个chunk，累积推理内容和工具调用
 		for chunk := range streamCh {
 			if chunk.Content != "" {
 				contentBuf.WriteString(chunk.Content)
@@ -150,6 +149,7 @@ func (e *Engine) runReactLoop(ctx context.Context, messages []llm.Message, tools
 			}
 		}
 
+		// 累加本轮推理内容到总轮次推理内容
 		roundReasoning := reasoningBuf.String()
 		totalReasoningContent += roundReasoning
 
@@ -179,8 +179,7 @@ func (e *Engine) runReactLoop(ctx context.Context, messages []llm.Message, tools
 				ToolCallID: tc.ID,
 			}
 
-			logrus.Infof("[AgentEngine] 执行工具: %s, 参数: %s", tc.Function.Name, tc.Function.Arguments)
-
+			//logrus.Infof("[AgentEngine] 执行工具: %s, 参数: %s", tc.Function.Name, tc.Function.Arguments)
 			record := e.executeToolCall(ctx, tc)
 
 			eventCh <- AgentEvent{
@@ -201,7 +200,7 @@ func (e *Engine) runReactLoop(ctx context.Context, messages []llm.Message, tools
 		}
 	}
 
-	logrus.Warnf("[AgentEngine] ReAct循环达到最大轮数 %d", e.config.MaxReactRounds)
+	// logrus.Warnf("[AgentEngine] ReAct循环达到最大轮数 %d", e.config.MaxReactRounds)
 	eventCh <- AgentEvent{
 		Type:             EventDone,
 		ReasoningContent: totalReasoningContent,
@@ -218,7 +217,7 @@ func (e *Engine) executeToolCall(ctx context.Context, tc llm.ToolCall) ToolCallR
 
 	var params map[string]interface{}
 	if err := json.Unmarshal([]byte(tc.Function.Arguments), &params); err != nil {
-		logrus.Errorf("[AgentEngine] 解析工具参数失败: %v, args=%s", err, tc.Function.Arguments)
+		// logrus.Errorf("[AgentEngine] 解析工具参数失败: %v, args=%s", err, tc.Function.Arguments)
 		record.Success = false
 		record.ResultMsg = fmt.Sprintf("参数解析失败: %s", err.Error())
 		return record
@@ -233,7 +232,7 @@ func (e *Engine) executeToolCall(ctx context.Context, tc llm.ToolCall) ToolCallR
 
 	result, err := e.registry.Execute(tc.Function.Name, skillCtx)
 	if err != nil {
-		logrus.Errorf("[AgentEngine] 执行工具 %s 失败: %v", tc.Function.Name, err)
+		// logrus.Errorf("[AgentEngine] 执行工具 %s 失败: %v", tc.Function.Name, err)
 		record.Success = false
 		record.ResultMsg = fmt.Sprintf("工具执行失败: %s", err.Error())
 		return record

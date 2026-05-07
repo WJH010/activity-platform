@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"activity-platform/internal/config"
+	rd "activity-platform/internal/redis"
 	"activity-platform/internal/utils"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -84,10 +86,23 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		// 检查Token黑名单
+		if rdb := rd.GetClient(); rdb != nil {
+			tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(tokenString)))
+			blacklistKey := fmt.Sprintf("token:blacklist:%s", tokenHash)
+			exists, err := rdb.Exists(c.Request.Context(), blacklistKey).Result()
+			if err == nil && exists > 0 {
+				utils.HandlerFunc(c, utils.NewBusinessError(utils.ErrCodeTokenRevoked, "认证令牌已失效，请重新登录"))
+				c.Abort()
+				return
+			}
+		}
+
 		// 将openID和userID存入上下文
 		c.Set("openid", claims.OpenID)
 		c.Set("userid", claims.UserID)
 		c.Set("user_role", claims.UserRole)
+		c.Set("access_token", tokenString)
 
 		c.Next()
 	}

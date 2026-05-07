@@ -375,20 +375,7 @@ func SetupRoutes(cfg *config.Config, router *gin.Engine, minioRepo filerepo.MinI
 				syncController = pipeline.NewSyncController(syncSvc)
 
 				// 启动定时增量同步（内部自动判断是否需要全量同步）
-				if cfg.RAG.Sync.IncrementInterval > 0 {
-					go syncSvc.StartIncrementalSync(context.Background(), cfg.RAG.Sync.IncrementInterval)
-				} else {
-					// 未配置增量同步间隔时，仅启动时判断是否需要全量同步
-					go func() {
-						articleState, _ := pipeline.NewSyncStateRepository(db).Get(context.Background(), "article")
-						if articleState == nil {
-							logrus.Infof("RAG同步: 未检测到同步记录，执行全量同步...")
-							if err := syncSvc.FullSync(context.Background()); err != nil {
-								logrus.Errorf("RAG全量同步失败: %v", err)
-							}
-						}
-					}()
-				}
+				go syncSvc.StartIncrementalSync(context.Background(), cfg.RAG.Sync.IncrementInterval)
 			}
 			// --- 初始化Agent模块依赖 ---
 			agentSessionRepo := agentrepo.NewSessionRepository(db)

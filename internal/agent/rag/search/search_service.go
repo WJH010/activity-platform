@@ -132,7 +132,8 @@ func (s *SearchService) searchCollection(
 	// dense向量检索请求
 	denseReq := milvusclient.NewAnnRequest("dense_vector", candidateLimit,
 		entity.FloatVector(queryVector),
-	)
+	).WithSearchParam("metric_type", "COSINE"). // 明确度量类型为余弦相似度
+							WithSearchParam("radius", "0.3") // 设置宽松阈值
 
 	// BM25全文检索请求（直接传原始文本，Milvus自动转为稀疏向量）
 	bm25Req := milvusclient.NewAnnRequest("sparse_vector", candidateLimit,

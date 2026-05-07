@@ -67,30 +67,31 @@ func (s *SyncService) FullSync(ctx context.Context) error {
 	}()
 
 	startTime := time.Now()
-	logrus.Infof("[RAG同步] 开始全量同步...")
+	//logrus.Infof("[RAG同步] 开始全量同步...")
 
+	// 全量同步文章
 	articleCount, err := s.fullSync(ctx, "文章", milvus.ArticleCollectionName, s.fetchAllArticles)
 	if err != nil {
-		s.updateSyncState("article", "失败", fmt.Sprintf("全量同步失败: %v", err), false)
-		s.updateSyncState("event", "跳过", "文章同步失败，跳过活动同步", false)
+		s.updateSyncState(startTime, "article", "失败", fmt.Sprintf("全量同步失败: %v", err), false)
+		s.updateSyncState(startTime, "event", "跳过", "文章同步失败，跳过活动同步", false)
 		s.syncSummary = fmt.Sprintf("全量同步失败: %v", err)
 		return fmt.Errorf("全量同步文章失败: %w", err)
 	}
 
 	eventCount, err := s.fullSync(ctx, "活动", milvus.EventCollectionName, s.fetchAllEvents)
 	if err != nil {
-		s.updateSyncState("article", "成功", fmt.Sprintf("全量同步完成: 文章%d篇", articleCount), true)
-		s.updateSyncState("event", "失败", fmt.Sprintf("全量同步失败: %v", err), false)
+		s.updateSyncState(startTime, "article", "成功", fmt.Sprintf("全量同步完成: 文章%d篇", articleCount), true)
+		s.updateSyncState(startTime, "event", "失败", fmt.Sprintf("全量同步失败: %v", err), false)
 		s.syncSummary = fmt.Sprintf("全量同步部分失败: 文章%d篇成功, 活动失败: %v", articleCount, err)
 		return fmt.Errorf("全量同步活动失败: %w", err)
 	}
 
 	summary := fmt.Sprintf("全量同步完成: 文章%d篇, 活动%d个, 耗时%v", articleCount, eventCount, time.Since(startTime))
 	s.syncSummary = summary
-	logrus.Infof("[RAG同步] %s", summary)
+	//logrus.Infof("[RAG同步] %s", summary)
 
-	s.updateSyncState("article", "成功", summary, true)
-	s.updateSyncState("event", "成功", summary, true)
+	s.updateSyncState(startTime, "article", "成功", summary, true)
+	s.updateSyncState(startTime, "event", "成功", summary, true)
 	return nil
 }
 
@@ -111,35 +112,35 @@ func (s *SyncService) IncrementalSync(ctx context.Context) error {
 	}()
 
 	startTime := time.Now()
-	logrus.Infof("[RAG同步] 开始增量同步...")
+	//logrus.Infof("[RAG同步] 开始增量同步...")
 
 	articleSince := s.getLastSyncAtForName(ctx, "article")
 	eventSince := s.getLastSyncAtForName(ctx, "event")
-	logrus.Infof("[RAG同步] 增量同步起始时间: 文章=%s, 活动=%s",
-		articleSince.Format("2006-01-02 15:04:05"), eventSince.Format("2006-01-02 15:04:05"))
+	//logrus.Infof("[RAG同步] 增量同步起始时间: 文章=%s, 活动=%s",
+	//articleSince.Format("2006-01-02 15:04:05"), eventSince.Format("2006-01-02 15:04:05"))
 
 	articleCount, err := s.incrementalSync(ctx, "文章", milvus.ArticleCollectionName, "article_id", articleSince, s.fetchUpdatedArticles)
 	if err != nil {
 		summary := fmt.Sprintf("增量同步失败: %v", err)
 		s.syncSummary = summary
-		s.updateSyncState("article", "失败", summary, false)
+		s.updateSyncState(startTime, "article", "失败", summary, false)
 		return err
 	}
-	s.updateSyncState("article", "成功", fmt.Sprintf("增量同步: 文章%d篇", articleCount), true)
+	s.updateSyncState(startTime, "article", "成功", fmt.Sprintf("增量同步: 文章%d篇", articleCount), true)
 
 	eventCount, err := s.incrementalSync(ctx, "活动", milvus.EventCollectionName, "event_id", eventSince, s.fetchUpdatedEvents)
 	if err != nil {
 		summary := fmt.Sprintf("增量同步部分失败: 文章%d篇成功, 活动失败: %v", articleCount, err)
 		s.syncSummary = summary
-		s.updateSyncState("event", "失败", err.Error(), false)
+		s.updateSyncState(startTime, "event", "失败", err.Error(), false)
 		return err
 	}
 
 	summary := fmt.Sprintf("增量同步完成: 文章%d篇, 活动%d个, 耗时%v", articleCount, eventCount, time.Since(startTime))
 	s.syncSummary = summary
-	logrus.Infof("[RAG同步] %s", summary)
+	//logrus.Infof("[RAG同步] %s", summary)
 
-	s.updateSyncState("event", "成功", summary, true)
+	s.updateSyncState(startTime, "event", "成功", summary, true)
 	return nil
 }
 
@@ -154,25 +155,26 @@ func (s *SyncService) StartIncrementalSync(ctx context.Context, intervalSeconds 
 	eventState, _ := s.syncStateRepo.Get(ctx, "event")
 
 	if articleState == nil || eventState == nil {
-		logrus.Infof("[RAG同步] 首次启动，执行全量同步...")
+		//logrus.Infof("[RAG同步] 首次启动，执行全量同步...")
 		if err := s.FullSync(ctx); err != nil {
 			logrus.Errorf("[RAG同步] 首次全量同步失败: %v", err)
 		}
-	} else {
-		logrus.Infof("[RAG同步] 已有同步记录，上次同步时间: 文章=%s, 活动=%s",
-			articleState.LastSyncAt.Format("2006-01-02 15:04:05"),
-			eventState.LastSyncAt.Format("2006-01-02 15:04:05"))
 	}
+	// else {
+	// 	logrus.Infof("[RAG同步] 已有同步记录，上次同步时间: 文章=%s, 活动=%s",
+	// 		articleState.LastSyncAt.Format("2006-01-02 15:04:05"),
+	// 		eventState.LastSyncAt.Format("2006-01-02 15:04:05"))
+	// }
 
 	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
 	defer ticker.Stop()
 
-	logrus.Infof("[RAG同步] 启动定时增量同步，间隔 %d 秒", intervalSeconds)
+	//logrus.Infof("[RAG同步] 启动定时增量同步，间隔 %d 秒", intervalSeconds)
 
 	for {
 		select {
 		case <-ctx.Done():
-			logrus.Info("[RAG同步] 停止定时增量同步")
+			//logrus.Info("[RAG同步] 停止定时增量同步")
 			return
 		case <-ticker.C:
 			if err := s.IncrementalSync(ctx); err != nil {
@@ -294,6 +296,7 @@ func (s *SyncService) incrementalSync(
 	var deletedCount, updatedCount, vectorReusedCount int
 
 	for {
+		// 获取增量数据：新增或更新的文章数据
 		items, total, err := fetchFn(ctx, since, batchSize, page)
 		if err != nil {
 			return totalProcessed, fmt.Errorf("增量查询%s失败 (page=%d): %w", sourceName, page, err)
@@ -302,6 +305,7 @@ func (s *SyncService) incrementalSync(
 			break
 		}
 
+		// 逐块处理增量数据
 		for _, item := range items {
 			totalProcessed++
 
@@ -460,13 +464,16 @@ func (s *SyncService) fetchAllEvents(ctx context.Context, page, pageSize int) ([
 
 // fetchUpdatedArticles 增量获取文章变更数据
 func (s *SyncService) fetchUpdatedArticles(ctx context.Context, since time.Time, pageSize, page int) ([]syncItem, int64, error) {
+	// 查询指定时间后新增或更新的文章数据
 	articles, total, err := s.articleRepo.ListUpdatedSince(ctx, since, pageSize, page)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	items := make([]syncItem, 0, len(articles))
+	// 处理文章数据：清洗文章内容，将文章内容转换为分块数据
 	for _, art := range articles {
+		// 清洗文章内容
 		chunks := s.textProcessor.ProcessDocument(art.ArticleTitle, art.ArticleContent, art.BriefContent)
 		chunkData := make([]milvus.ChunkData, 0, len(chunks))
 		for _, chunk := range chunks {
@@ -535,15 +542,16 @@ func (s *SyncService) getLastSyncAtForName(ctx context.Context, name string) tim
 }
 
 // updateSyncState 更新同步状态到数据库
-func (s *SyncService) updateSyncState(name string, status string, logMsg string, updateLastSyncAt bool) {
+func (s *SyncService) updateSyncState(LastSyncAt time.Time, name string, status string, logMsg string, updateLastSyncAt bool) {
 	ctx := context.Background()
 	state := &SyncState{
-		Name:   name,
-		Status: status,
-		Log:    logMsg,
+		LastSyncAt: LastSyncAt,
+		Name:       name,
+		Status:     status,
+		Log:        logMsg,
 	}
 	if updateLastSyncAt {
-		state.LastSyncAt = time.Now()
+		// state.LastSyncAt = time.Now()
 		if err := s.syncStateRepo.Upsert(ctx, state); err != nil {
 			logrus.Warnf("[RAG同步] 更新同步状态失败 [%s]: %v", name, err)
 		}

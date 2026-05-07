@@ -219,7 +219,7 @@ func (p *OpenAICompatibleProvider) ChatStream(ctx context.Context, messages []Me
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		logrus.Errorf("LLM Stream API返回错误, status=%d, body=%s", resp.StatusCode, string(body))
+		// logrus.Errorf("LLM Stream API返回错误, status=%d, body=%s", resp.StatusCode, string(body))
 		return nil, fmt.Errorf("LLM Stream API返回错误(status=%d): %s", resp.StatusCode, string(body))
 	}
 

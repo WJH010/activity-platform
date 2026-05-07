@@ -299,16 +299,18 @@ func (ctr *UserController) UpdateAdminStatus(ctx *gin.Context) {
 func (ctr *UserController) Logout(ctx *gin.Context) {
 	// 获取当前登录用户ID
 	userID, err := utils.GetUserID(ctx)
-	// 处理异常
 	if err != nil {
 		utils.HandlerFunc(ctx, err)
 		return
 	}
 
-	// 调用服务处理退出登录
-	err = ctr.userService.WxLogout(ctx, userID)
+	// 从上下文获取原始access_token（由AuthMiddleware存入）
+	accessToken, _ := ctx.Get("access_token")
+	accessTokenStr, _ := accessToken.(string)
 
-	// 处理异常
+	// 调用服务处理退出登录
+	err = ctr.userService.WxLogout(ctx, userID, accessTokenStr)
+
 	if err != nil {
 		utils.HandlerFunc(ctx, err)
 		return

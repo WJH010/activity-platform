@@ -13,6 +13,7 @@ type Config struct {
 	JWT      JWTConfig      `yaml:"jwt"`
 	Agent    AgentConfig    `yaml:"agent"`
 	RAG      RAGConfig      `yaml:"rag"`
+	Redis    RedisConfig    `yaml:"redis"`
 }
 
 // AppConfig 应用配置
@@ -93,4 +94,12 @@ type EmbeddingConfig struct {
 // SyncConfig 数据同步配置
 type SyncConfig struct {
 	IncrementInterval int `yaml:"increment_interval"`
+}
+
+// RedisConfig Redis配置
+type RedisConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
 }

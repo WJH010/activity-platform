@@ -19,6 +19,7 @@ type articleCreateSkill struct {
 	articleSvc articleSvc.ArticleService
 }
 
+// New 创建文章创建Skill
 func New(articleSvc articleSvc.ArticleService) skill.Skill {
 	meta, err := skill.ParseSkillMD(skillMD)
 	if err != nil {

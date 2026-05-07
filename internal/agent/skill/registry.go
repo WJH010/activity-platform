@@ -40,9 +40,9 @@ func (r *Registry) Register(s Skill) {
 	defer r.mu.Unlock()
 
 	meta := s.Meta()
-	if _, exists := r.skills[meta.Name]; exists {
-		logrus.Warnf("Skill [%s] 已存在，将被覆盖", meta.Name)
-	}
+	// if _, exists := r.skills[meta.Name]; exists {
+	// 	logrus.Warnf("Skill [%s] 已存在，将被覆盖", meta.Name)
+	// }
 	r.skills[meta.Name] = s
 	logrus.Infof("注册Skill: [%s] %s (builtin=%v)", meta.Name, meta.DisplayName, meta.IsBuiltin)
 }
@@ -124,7 +124,7 @@ func (r *Registry) Execute(name string, ctx SkillContext) (SkillResult, error) {
 // 由SkillService在CRUD操作后调用
 func (r *Registry) ReloadDynamicSkills(ctx context.Context, dynamicSkills []Skill) {
 	r.mu.Lock()
-	defer r.mu.Lock()
+	defer r.mu.Unlock()
 
 	// 移除所有旧的动态Skill
 	for name, s := range r.skills {

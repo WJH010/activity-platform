@@ -14,7 +14,7 @@ parameters:
       description: 文章类型
     article_content:
       type: string
-      description: 文章正文内容（Markdown格式）
+      description: 文章正文内容（超文本格式）
     brief_content:
       type: string
       description: 文章摘要（如未提供，将从正文截取）

@@ -3,6 +3,7 @@ package service
 import (
 	"activity-platform/internal/config"
 	msgsvc "activity-platform/internal/message/service"
+	rd "activity-platform/internal/redis"
 	"activity-platform/internal/user/dto"
 	"activity-platform/internal/user/model"
 	"activity-platform/internal/user/repository"
@@ -56,7 +57,7 @@ type UserService interface {
 	// BgRefreshToken 通过刷新令牌获取新的access token和refresh token
 	BgRefreshToken(ctx context.Context, refreshToken string) (string, string, error)
 	// WxLogout 退出登录
-	WxLogout(ctx context.Context, userID int) error
+	WxLogout(ctx context.Context, userID int, accessToken string) error
 }
 
 // UserServiceImpl 用户服务实现
@@ -316,9 +317,57 @@ func hmacSha256(data string, secret string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// WxLogout 微信小程序登出（失效刷新令牌）
-func (svc *UserServiceImpl) WxLogout(ctx context.Context, userID int) error {
-	return svc.userRepo.UpdateRefreshToken(ctx, userID, "")
+// WxLogout 退出登录：清除refresh_token + 将access_token加入黑名单
+func (svc *UserServiceImpl) WxLogout(ctx context.Context, userID int, accessToken string) error {
+	// 1. 清除数据库中的refresh_token，阻止刷新
+	if err := svc.userRepo.UpdateRefreshToken(ctx, userID, ""); err != nil {
+		return err
+	}
+
+	// 2. 将access_token加入Redis黑名单
+	rdb := rd.GetClient()
+	fmt.Println("获取rd:", rdb)
+	fmt.Println("token:", accessToken)
+	if rdb != nil && accessToken != "" {
+		// 计算token的SHA256哈希作为Redis key
+		tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(accessToken)))
+		blacklistKey := fmt.Sprintf("token:blacklist:%s", tokenHash)
+
+		// 解析token获取剩余有效期
+		claims, err := parseAccessToken(accessToken, svc.cfg.JWT.JwtSecret)
+		fmt.Println("claims:", claims)
+		if err == nil {
+			// 计算token剩余有效期
+			exp := time.Unix(claims.ExpiresAt, 0)
+			ttl := time.Until(exp)
+			fmt.Println("ttl:", ttl)
+			if ttl > 0 {
+				// 设置黑名单，TTL为token剩余有效期，过期自动清除
+				fmt.Println("设置黑名单")
+				rdb.Set(ctx, blacklistKey, "1", ttl)
+			}
+			// 如果ttl <= 0，token已过期，无需加入黑名单
+		}
+	}
+
+	return nil
+}
+
+// parseAccessToken 解析access_token获取Claims（用于计算剩余有效期）
+func parseAccessToken(tokenString string, secret string) (*jwt.StandardClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("无效的签名方法")
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(*jwt.StandardClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, fmt.Errorf("无效的token")
 }
 
 // parseRefreshToken 解析refresh token

@@ -1,0 +1,141 @@
+version: '3.8'
+
+# 全部基础设施一键部署：MinIO + Milvus + Embedding
+# 使用方式：
+#   启动：docker compose -f docker-compose.infra.yaml up -d
+#   停止：docker compose -f docker-compose.infra.yaml down
+#   查看状态：docker compose -f docker-compose.infra.yaml ps
+
+services:
+  # ======================== MinIO ========================
+  minio:
+    container_name: minio
+    image: docker.1ms.run/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY_ID:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_ACCESS_KEY:-}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # S3 API（Go应用通过localhost:9000访问）
+      - "9002:9001"   # MinIO Console（浏览器访问http://localhost:9002）
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # 自动创建 bucket
+  # minio-init:
+  #   container_name: minio-init
+  #   image: docker.1ms.run/minio/mc:latest
+  #   depends_on:
+  #     minio:
+  #       condition: service_healthy
+  #   entrypoint: >
+  #     /bin/sh -c "
+  #     mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY_ID:-} ${MINIO_SECRET_ACCESS_KEY:-};
+  #     mc mb myminio/milvus-bucket --ignore-existing;
+  #     mc mb myminio/news-platform --ignore-existing;
+  #     echo 'MinIO buckets created';
+  #     "
+
+  # ======================== Milvus ========================
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - milvus_etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus:
+    container_name: milvus-standalone
+    image: docker.1ms.run/milvusdb/milvus:v2.5.4
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      # 同一Docker网络，用容器名访问MinIO
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY_ID:-}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_ACCESS_KEY:-}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-}
+      MINIO_USE_SSL: "false"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      # minio-init:
+      #   condition: service_completed_successfully
+
+  # ======================== Embedding (bge-m3) ========================
+  embedding:
+    container_name: infinity-embed
+    image: docker.1ms.run/michaelf34/infinity:latest
+    command: --engine torch --model-id BAAI/bge-m3 --port 8001 --batch-size 32
+    environment:
+      HF_ENDPOINT: "https://hf-mirror.com"
+    # 如有GPU，取消下面注释
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - huggingface_cache:/app/.cache
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      start_period: 120s
+      timeout: 10s
+      retries: 5
+
+  # ======================== Redis ========================
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-} --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  minio_data:
+  milvus_etcd_data:
+  milvus_data:
+  huggingface_cache:
+  redis_data:

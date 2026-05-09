@@ -1,0 +1,70 @@
+# 应用基础配置
+app:
+  name: activity-platform
+  env: production  # 可选: development, testing, production
+  port: 8080
+  debug: false
+  cors:
+    allowed_origins:
+      - "*" # 临时允许所有域名访问
+
+# 数据库配置
+database:
+  driver: mysql
+  host: ${NEWS_DB_HOST:-localhost}     # 从环境变量获取，默认 localhost
+  port: ${NEWS_DB_PORT:-3306}          # 从环境变量获取，默认 3306
+  username: ${NEWS_DB_USER:-}          # 修改为自己数据库的用户名
+  password: ${NEWS_DB_PASSWORD:-}      # 修改为自己数据库的密码
+  dbname: ${NEWS_DB_NAME:-}            # 修改为自己数据库的数据库名
+  max_open_connections: 100
+  max_idle_connections: 20
+  connection_max_lifetime: 300s
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:-}
+  access_key_id: ${MINIO_ACCESS_KEY_ID:-}
+  secret_access_key: ${MINIO_SECRET_ACCESS_KEY:-}
+  use_ssl: ${MINIO_USE_SSL:-false}
+  bucket_name: ${MINIO_BUCKET_NAME:-}
+
+wechat:
+  app_id: ${WECHAT_APP_ID:-}
+  app_secret: ${WECHAT_APP_SECRET:-}
+
+jwt:
+  jwt_secret: ${JWT_SECRET:-}
+  refresh_secret: ${JWT_REFRESH_SECRET:-}
+  session_key_secret: ${JWT_SESSION_KEY_SECRET:-}
+  expiration_hours: 3600  # JWT过期时间，单位为秒
+
+# Agent 模块配置
+agent:
+  # 默认LLM配置
+  default_provider: deepseek
+  # ReAct循环最大轮数
+  max_react_rounds: 10
+  # 对话历史最大条数（超过后触发摘要）
+  max_history_messages: 50
+  # 动态Skill调用内部接口的基础URL
+  internal_api_base_url: "http://localhost:8080"
+
+# RAG 语义检索配置
+rag:
+  milvus:
+    host: ${MILVUS_HOST:-localhost}
+    port: ${MILVUS_PORT:-19530}
+    db_name: "default"
+  embedding:
+    provider: "bge_m3_api"
+    api_url: ${EMBEDDING_API_URL:-}
+    dimension: 1024
+    batch_size: 32
+  sync:
+    increment_interval: 300
+
+# Redis配置
+redis:
+  host: ${REDIS_HOST:-localhost}
+  port: ${REDIS_PORT:-6379}
+  password: ${REDIS_PASSWORD:-}
+  db: ${REDIS_DB:-0}

@@ -29,6 +29,7 @@ type CreateEventRequest struct {
 	EventEndTime          string  `json:"event_end_time" binding:"required,time_format"`          // 活动结束时间
 	RegistrationStartTime string  `json:"registration_start_time" binding:"required,time_format"` // 活动报名开始时间
 	RegistrationEndTime   string  `json:"registration_end_time" binding:"required,time_format"`   // 活动报名截止时间
+	MaxRegistrants        int     `json:"max_registrants" binding:"omitempty,gte=0"`              // 最大报名人数，0表示不限
 	EventAddress          string  `json:"event_address" binding:"required,max=255"`               // 活动地址
 	RegistrationFee       float64 `json:"registration_fee" binding:"gte=0"`                       // 报名费用，必须大于或等于 0
 	CoverImageURL         string  `json:"cover_image_url" binding:"omitempty,url"`                // 封面图片URL
@@ -44,6 +45,7 @@ type UpdateEventRequest struct {
 	EventEndTime          *string  `json:"event_end_time" binding:"omitempty,non_empty_string,time_format"`          // 活动结束时间
 	RegistrationStartTime *string  `json:"registration_start_time" binding:"omitempty,non_empty_string,time_format"` // 活动报名开始时间
 	RegistrationEndTime   *string  `json:"registration_end_time" binding:"omitempty,non_empty_string,time_format"`   // 活动报名截止时间
+	MaxRegistrants        *int     `json:"max_registrants" binding:"omitempty,gte=0"`                                // 最大报名人数，0表示不限
 	EventAddress          *string  `json:"event_address" binding:"omitempty,non_empty_string,max=255"`               // 活动地址
 	RegistrationFee       *float64 `json:"registration_fee" binding:"omitempty,gte=0"`                               // 报名费用，必须大于或等于 0
 	CoverImageURL         *string  `json:"cover_image_url" binding:"omitempty,url"`                                  // 封面图片URL
@@ -59,6 +61,9 @@ type EventListResponse struct {
 	EventEndTime          time.Time `json:"event_end_time"`          // 活动结束时间
 	RegistrationStartTime time.Time `json:"registration_start_time"` // 活动报名开始时间
 	RegistrationEndTime   time.Time `json:"registration_end_time"`   // 活动报名截止时间
+	MaxRegistrants        int       `json:"max_registrants"`         // 最大报名人数
+	CurrentRegistrants    int       `json:"current_registrants"`     // 当前已报名人数
+	RemainingQuota        int       `json:"remaining_quota"`         // 剩余名额
 	EventAddress          string    `json:"event_address"`           // 活动地址
 	RegistrationFee       float64   `json:"registration_fee"`        // 报名费用
 	Status                string    `json:"status"`                  // 活动状态
@@ -88,6 +93,9 @@ type EventDetailResponse struct {
 	EventEndTime          time.Time       `json:"event_end_time"`          // 活动结束时间
 	RegistrationStartTime time.Time       `json:"registration_start_time"` // 活动报名开始时间
 	RegistrationEndTime   time.Time       `json:"registration_end_time"`   // 活动报名截止时间
+	MaxRegistrants        int             `json:"max_registrants"`         // 最大报名人数
+	CurrentRegistrants    int             `json:"current_registrants"`     // 当前报名人数
+	RemainingQuota        int             `json:"remaining_quota"`         // 剩余名额
 	EventAddress          string          `json:"event_address"`           // 活动地址
 	RegistrationFee       float64         `json:"registration_fee"`        // 报名费用
 	Status                string          `json:"status"`                  // 活动状态

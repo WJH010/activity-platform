@@ -1,17 +1,20 @@
 package service
 
 import (
+	"activity-platform/internal/cache"
 	chatmodel "activity-platform/internal/chat/model"
 	chatSvc "activity-platform/internal/chat/service"
 	"activity-platform/internal/event/dto"
 	"activity-platform/internal/event/model"
 	"activity-platform/internal/event/repository"
+	"activity-platform/internal/event/stock"
 	filerepo "activity-platform/internal/file/repository"
 	userrepo "activity-platform/internal/user/repository"
 	"activity-platform/internal/utils"
 	"context"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -48,6 +51,8 @@ type EventServiceImpl struct {
 	userRepo          userrepo.UserRepository            // 用户数据访问接口
 	fileRepo          filerepo.FileRepository            // 文件数据访问接口
 	chatSvc           chatSvc.ChatGroupService           // 聊天服务接口
+	stockSvc          *stock.StockService
+	eventCache        *cache.Cache[int, *model.Event]
 	//msgSvc            msgsvc.MsgGroupService             // 消息群组服务接口
 }
 
@@ -58,6 +63,8 @@ func NewEventService(
 	userRepo userrepo.UserRepository,
 	fileRepo filerepo.FileRepository,
 	chatSvc chatSvc.ChatGroupService,
+	stockSvc *stock.StockService,
+	eventCache *cache.Cache[int, *model.Event],
 	//msgSvc msgsvc.MsgGroupService,
 ) EventService {
 	return &EventServiceImpl{
@@ -66,6 +73,8 @@ func NewEventService(
 		userRepo:          userRepo,
 		fileRepo:          fileRepo,
 		chatSvc:           chatSvc,
+		stockSvc:          stockSvc,
+		eventCache:        eventCache,
 		//msgSvc:            msgSvc,
 	}
 }
@@ -86,7 +95,16 @@ func (svc *EventServiceImpl) GetEventStatus(registrationStartTime time.Time, reg
 
 // ListEvent 分页查询活动列表
 func (svc *EventServiceImpl) ListEvent(ctx context.Context, page, pageSize int, eventStatus string, queryScope string, eventTitle string) ([]*dto.EventListResponse, int64, error) {
-	return svc.eventRepo.List(ctx, page, pageSize, eventStatus, queryScope, eventTitle)
+	events, total, err := svc.eventRepo.List(ctx, page, pageSize, eventStatus, queryScope, eventTitle)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, e := range events {
+		if e.MaxRegistrants > 0 {
+			e.RemainingQuota = e.MaxRegistrants - e.CurrentRegistrants
+		}
+	}
+	return events, total, nil
 }
 
 // GetEventDetail 获取活动详情
@@ -128,8 +146,10 @@ func (svc *EventServiceImpl) GetEventDetail(ctx context.Context, eventID int) (*
 // RegistrationEvent 活动报名实现
 func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int, userID int) error {
 	var mapping *model.EventUserMapping
-	// 检查活动是否存在
-	event, err := svc.eventRepo.GetEventDetail(ctx, eventID)
+	// 检查活动是否存在（本地缓存优先，内置 singleflight 防击穿）
+	event, err := svc.eventCache.GetOrLoad(eventID, func() (*model.Event, error) {
+		return svc.eventRepo.GetEventDetail(ctx, eventID)
+	})
 	if err != nil {
 		return err
 	}
@@ -142,15 +162,28 @@ func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int,
 		return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "未在活动报名时间内")
 	}
 
+	// 检查活动是否已满员
+	if event.MaxRegistrants > 0 {
+		decrResult, err := svc.stockSvc.Decr(ctx, eventID)
+		if err != nil {
+			logrus.Warnf("Redis库存预扣失败[eventID=%d]: %v", eventID, err)
+		}
+		if decrResult == stock.DecrResultSoldOut {
+			return utils.NewBusinessError(utils.ErrCodeResourceQuotaExceeded, "报名人数已满")
+		}
+	}
+
 	// 检查用户信息是否完整
 	// 根据活动ID获取所需信息
 	userInfoList, err := svc.eventRepo.GetEventUserInfoByEventID(ctx, eventID)
 	if err != nil {
+		svc.stockSvc.Incr(ctx, eventID)
 		return err
 	}
 	// 获取用户信息
 	user, err := svc.userRepo.GetUserByID(ctx, userID)
 	if err != nil || user == nil {
+		svc.stockSvc.Incr(ctx, eventID)
 		return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "加载用户信息失败")
 	}
 
@@ -162,42 +195,49 @@ func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int,
 	for _, field := range userInfoList {
 		if field.Code == "name" {
 			if user.Name == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写姓名")
 			}
 			registration.Name = user.Name
 		}
 		if field.Code == "phone_number" {
 			if user.PhoneNumber == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写手机号")
 			}
 			registration.PhoneNumber = user.PhoneNumber
 		}
 		if field.Code == "email" {
 			if user.Email == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写邮箱")
 			}
 			registration.Email = user.Email
 		}
 		if field.Code == "unit" {
 			if user.Unit == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写单位")
 			}
 			registration.Unit = user.Unit
 		}
 		if field.Code == "department" {
 			if user.Department == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写部门")
 			}
 			registration.Department = user.Department
 		}
 		if field.Code == "position" {
 			if user.Position == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写职位")
 			}
 			registration.Position = user.Position
 		}
 		if field.Code == "industry" {
 			if user.Industry == "" {
+				svc.stockSvc.Incr(ctx, eventID)
 				return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "请填写行业")
 			}
 			registration.Industry = user.Industry
@@ -206,6 +246,7 @@ func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int,
 
 	mapping, err = svc.eventRepo.GetEventUserMap(ctx, eventID, userID)
 	if err != nil {
+		svc.stockSvc.Incr(ctx, eventID)
 		return err
 	}
 
@@ -239,13 +280,24 @@ func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int,
 			return err
 		}
 
+		// 条件更新：原子校验名额 + 递增计数
+		if err := svc.eventRepo.IncrementRegistrants(ctx, tx, eventID); err != nil {
+			return err
+		}
+
 		return nil // 返回 nil，GORM 自动提交
 	})
 
 	// 处理事务执行结果
 	if err != nil {
+		if event.MaxRegistrants > 0 {
+			svc.stockSvc.Incr(ctx, eventID)
+		}
 		return err
 	}
+
+	// 报名成功，失效本地缓存（current_registrants已变化）
+	svc.eventCache.Delete(eventID)
 
 	// 报名成功后，添加用户到活动对应的消息群组，消息群组添加失败不影响报名成功
 	// 查询活动对应的消息群组
@@ -261,7 +313,7 @@ func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int,
 	// }
 
 	// 报名成功后，添加用户到活动对应的聊天群组，聊天群组添加失败不影响报名成功
-	group, err := svc.chatSvc.GetGroupByID(ctx, eventID)
+	group, err := svc.chatSvc.GetGroupByID(ctx, event.ChatGroupID)
 	if err != nil || group == nil {
 		return utils.NewBusinessError(utils.ErrCodeResourceNotFound, "进入活动聊天群组失败，请联系管理员")
 	}
@@ -276,8 +328,10 @@ func (svc *EventServiceImpl) RegistrationEvent(ctx context.Context, eventID int,
 
 // CancelRegistrationEvent 取消活动报名
 func (svc *EventServiceImpl) CancelRegistrationEvent(ctx context.Context, eventID int, userID int) error {
-	// 检查活动是否存在
-	event, err := svc.eventRepo.GetEventDetail(ctx, eventID)
+	// 检查活动是否存在（本地缓存优先，内置 singleflight 防击穿）
+	event, err := svc.eventCache.GetOrLoad(eventID, func() (*model.Event, error) {
+		return svc.eventRepo.GetEventDetail(ctx, eventID)
+	})
 	if err != nil {
 		return err
 	}
@@ -302,6 +356,9 @@ func (svc *EventServiceImpl) CancelRegistrationEvent(ctx context.Context, eventI
 		if err != nil {
 			return err
 		}
+		if err := svc.eventRepo.DecrementRegistrants(ctx, tx, eventID); err != nil {
+			return err
+		}
 		return nil // 返回 nil，GORM 自动提交
 	})
 
@@ -321,6 +378,10 @@ func (svc *EventServiceImpl) CancelRegistrationEvent(ctx context.Context, eventI
 	// 	return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "退出活动消息群组失败，请联系管理员处理")
 	// }
 
+	if event.MaxRegistrants > 0 {
+		svc.stockSvc.Incr(ctx, eventID)
+	}
+
 	// 取消报名成功后，将用户从活动对应的聊天群组移除
 	group, err := svc.chatSvc.GetGroupByID(ctx, eventID)
 	if err != nil || group == nil {
@@ -331,6 +392,9 @@ func (svc *EventServiceImpl) CancelRegistrationEvent(ctx context.Context, eventI
 	if err != nil {
 		return utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "退出活动聊天群组失败，请联系管理员处理")
 	}
+
+	// 取消报名成功，失效本地缓存（current_registrants已变化）
+	svc.eventCache.Delete(eventID)
 
 	return nil
 }
@@ -447,6 +511,13 @@ func (svc *EventServiceImpl) CreateEvent(ctx context.Context, event *model.Event
 	// 	return err
 	// }
 
+	// 初始化活动名额
+	if event.MaxRegistrants > 0 {
+		if err := svc.stockSvc.InitWithTTL(ctx, event.ID, event.MaxRegistrants, 0, event.RegistrationEndTime); err != nil {
+			logrus.Warnf("初始化活动名额失败[eventID=%d]: %v", event.ID, err)
+		}
+	}
+
 	chatGroup := &chatmodel.ChatGroup{
 		GroupName: event.Title,
 		Desc:      "由活动 '" + event.Title + "' 自动创建",
@@ -526,6 +597,17 @@ func (svc *EventServiceImpl) UpdateEvent(ctx context.Context, eventID int, req d
 		return err
 	}
 
+	// 更新活动库存
+	if req.MaxRegistrants != nil {
+		currentRegistrants := event.CurrentRegistrants
+		if err := svc.stockSvc.Init(ctx, eventID, *req.MaxRegistrants, currentRegistrants); err != nil {
+			logrus.Warnf("更新活动库存失败[eventID=%d]: %v", eventID, err)
+		}
+	}
+
+	// 更新活动缓存
+	svc.eventCache.Delete(eventID)
+
 	return nil
 }
 
@@ -597,6 +679,12 @@ func makeUpdateFields(event *model.Event, req dto.UpdateEventRequest) (map[strin
 	if req.CoverImageURL != nil {
 		updateFields["cover_image_url"] = *req.CoverImageURL
 	}
+	if req.MaxRegistrants != nil {
+		if *req.MaxRegistrants > 0 && *req.MaxRegistrants < event.CurrentRegistrants {
+			return nil, utils.NewBusinessError(utils.ErrCodeBusinessLogicError, "最大报名人数不能小于当前已报名人数")
+		}
+		updateFields["max_registrants"] = *req.MaxRegistrants
+	}
 
 	return updateFields, nil
 }
@@ -650,6 +738,14 @@ func (svc *EventServiceImpl) DeleteEvent(ctx context.Context, eventID int, userI
 	if err != nil {
 		return utils.NewBusinessError(utils.ErrCodeServerInternalError, "删除活动关联群聊失败"+err.Error())
 	}
+
+	// 清理Redis库存缓存
+	if err := svc.stockSvc.Delete(ctx, eventID); err != nil {
+		logrus.Warnf("删除活动库存缓存失败[eventID=%d]: %v", eventID, err)
+	}
+
+	// 更新活动缓存
+	svc.eventCache.Delete(eventID)
 
 	return nil
 }

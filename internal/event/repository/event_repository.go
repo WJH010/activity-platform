@@ -11,6 +11,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // EventRepository 数据访问接口，定义数据访问的方法集
@@ -51,6 +52,12 @@ type EventRepository interface {
 	DeleteEventRegistrationInfo(ctx context.Context, tx *gorm.DB, event_id int, user_id int) error
 	// ListUpdatedSince 查询指定时间后有更新的活动（含已删除，含详情，用于增量同步）
 	ListUpdatedSince(ctx context.Context, since time.Time, pageSize int, page int) ([]dto.EventUpdatedSinceResponse, int64, error)
+	// GetEventForUpdate 使用FOR UPDATE行锁查询活动（防超卖）
+	GetEventForUpdate(ctx context.Context, tx *gorm.DB, eventID int) (*model.Event, error)
+	// IncrementRegistrants 原子递增当前报名人数
+	IncrementRegistrants(ctx context.Context, tx *gorm.DB, eventID int) error
+	// DecrementRegistrants 原子递减当前报名人数
+	DecrementRegistrants(ctx context.Context, tx *gorm.DB, eventID int) error
 }
 
 // EventRepositoryImpl 实现接口的具体结构体
@@ -419,7 +426,7 @@ func (repo *EventRepositoryImpl) CreateEventRegistrationInfo(ctx context.Context
 // DeleteEventRegistrationInfo 删除活动报名信息
 func (repo *EventRepositoryImpl) DeleteEventRegistrationInfo(ctx context.Context, tx *gorm.DB, event_id int, user_id int) error {
 	// 删除报名信息
-	result := repo.db.WithContext(ctx).
+	result := tx.WithContext(ctx).
 		Model(&model.EventRegistrationInfo{}).
 		Where("event_id = ? AND user_id = ?", event_id, user_id).
 		Delete(&model.EventRegistrationInfo{})
@@ -466,4 +473,49 @@ func (repo *EventRepositoryImpl) ListUpdatedSince(ctx context.Context, since tim
 	}
 
 	return events, total, nil
+}
+
+// GetEventForUpdate 使用FOR UPDATE行锁查询活动
+func (repo *EventRepositoryImpl) GetEventForUpdate(ctx context.Context, tx *gorm.DB, eventID int) (*model.Event, error) {
+	var event model.Event
+	err := tx.WithContext(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&event, eventID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, utils.NewBusinessError(utils.ErrCodeResourceNotFound, "活动不存在或已被删除")
+		}
+		return nil, utils.NewSystemError(fmt.Errorf("FOR UPDATE查询活动失败: %w", err))
+	}
+	return &event, nil
+}
+
+// IncrementRegistrants 原子递增当前报名人数
+func (repo *EventRepositoryImpl) IncrementRegistrants(ctx context.Context, tx *gorm.DB, eventID int) error {
+	result := tx.WithContext(ctx).
+		Model(&model.Event{}).
+		Where("id = ? AND is_deleted = ? AND (max_registrants = 0 OR current_registrants < max_registrants)", eventID, utils.DeletedFlagNo).
+		UpdateColumn("current_registrants", gorm.Expr("current_registrants + 1"))
+	if result.Error != nil {
+		return utils.NewSystemError(fmt.Errorf("递增报名人数失败: %w", result.Error))
+	}
+	if result.RowsAffected == 0 {
+		return utils.NewBusinessError(utils.ErrCodeResourceQuotaExceeded, "报名人数已满")
+	}
+	return nil
+}
+
+// DecrementRegistrants 原子递减当前报名人数
+func (repo *EventRepositoryImpl) DecrementRegistrants(ctx context.Context, tx *gorm.DB, eventID int) error {
+	result := tx.WithContext(ctx).
+		Model(&model.Event{}).
+		Where("id = ? AND is_deleted = ? AND current_registrants > 0", eventID, utils.DeletedFlagNo).
+		UpdateColumn("current_registrants", gorm.Expr("current_registrants - 1"))
+	if result.Error != nil {
+		return utils.NewSystemError(fmt.Errorf("递减报名人数失败: %w", result.Error))
+	}
+	if result.RowsAffected == 0 {
+		return utils.NewBusinessError(utils.ErrCodeResourceNotFound, "活动不存在或报名人数异常")
+	}
+	return nil
 }

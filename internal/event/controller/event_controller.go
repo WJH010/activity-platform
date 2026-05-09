@@ -69,6 +69,12 @@ func (ctr *EventController) GetEventDetail(ctx *gin.Context) {
 	// 获取活动状态
 	status := ctr.eventService.GetEventStatus(event.RegistrationStartTime, event.RegistrationEndTime)
 
+	// 获取活动库存
+	remainingQuota := -1
+	if event.MaxRegistrants > 0 {
+		remainingQuota = event.MaxRegistrants - event.CurrentRegistrants
+	}
+
 	result := dto.EventDetailResponse{
 		Title:                 event.Title,
 		Detail:                event.Detail,
@@ -76,6 +82,9 @@ func (ctr *EventController) GetEventDetail(ctx *gin.Context) {
 		EventEndTime:          event.EventEndTime,
 		RegistrationStartTime: event.RegistrationStartTime,
 		RegistrationEndTime:   event.RegistrationEndTime,
+		MaxRegistrants:        event.MaxRegistrants,
+		CurrentRegistrants:    event.CurrentRegistrants,
+		RemainingQuota:        remainingQuota,
 		EventAddress:          event.EventAddress,
 		RegistrationFee:       event.RegistrationFee,
 		Status:                status,
@@ -221,6 +230,10 @@ func (ctr *EventController) ListUserRegisteredEvents(ctx *gin.Context) {
 
 	var results []dto.EventListResponse
 	for _, ev := range events {
+		remainingQuota := -1
+		if ev.MaxRegistrants > 0 {
+			remainingQuota = ev.MaxRegistrants - ev.CurrentRegistrants
+		}
 		results = append(results, dto.EventListResponse{
 			ID:                    ev.ID,
 			Title:                 ev.Title,
@@ -228,6 +241,9 @@ func (ctr *EventController) ListUserRegisteredEvents(ctx *gin.Context) {
 			EventEndTime:          ev.EventEndTime,
 			RegistrationStartTime: ev.RegistrationStartTime,
 			RegistrationEndTime:   ev.RegistrationEndTime,
+			MaxRegistrants:        ev.MaxRegistrants,
+			CurrentRegistrants:    ev.CurrentRegistrants,
+			RemainingQuota:        remainingQuota,
 			EventAddress:          ev.EventAddress,
 			RegistrationFee:       ev.RegistrationFee,
 			CoverImageURL:         ev.CoverImageURL,
@@ -282,6 +298,7 @@ func (ctr *EventController) CreateEvent(ctx *gin.Context) {
 		EventEndTime:          eventEndTime,
 		RegistrationStartTime: registrationStartTime,
 		RegistrationEndTime:   registrationEndTime,
+		MaxRegistrants:        req.MaxRegistrants,
 		EventAddress:          req.EventAddress,
 		RegistrationFee:       req.RegistrationFee,
 		CoverImageURL:         req.CoverImageURL,

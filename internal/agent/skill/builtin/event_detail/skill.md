@@ -32,6 +32,9 @@ parameters:
 - registration_fee: 报名费用
 - status: 活动状态
 - images: 活动图片列表
+- max_registrants: 最大报名人数（0表示不限）
+- current_registrants: 当前已报名人数
+- remaining_quota: 剩余名额（-1表示不限）
 
 ## 注意事项
 

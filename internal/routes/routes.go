@@ -7,12 +7,14 @@ import (
 	"activity-platform/internal/agent/rag/search"
 	"activity-platform/internal/agent/skill"
 	"activity-platform/internal/agent/skill/builtin"
+	"activity-platform/internal/cache"
 	"activity-platform/internal/chat"
 	"activity-platform/internal/config"
 	"activity-platform/internal/database"
 	"activity-platform/internal/middleware"
 	"activity-platform/internal/utils"
 	"context"
+	"time"
 
 	articlectr "activity-platform/internal/article/controller"
 	articlerepo "activity-platform/internal/article/repository"
@@ -31,8 +33,10 @@ import (
 	msgsvc "activity-platform/internal/message/service"
 
 	eventctr "activity-platform/internal/event/controller"
+	eventmodel "activity-platform/internal/event/model"
 	eventrepo "activity-platform/internal/event/repository"
 	eventsvc "activity-platform/internal/event/service"
+	eventstock "activity-platform/internal/event/stock"
 
 	chatctr "activity-platform/internal/chat/controller"
 	chatrepo "activity-platform/internal/chat/repository"
@@ -76,7 +80,7 @@ func SetupRoutes(cfg *config.Config, router *gin.Engine, minioRepo filerepo.MinI
 	userService := usersvc.NewUserService(userRepo, msgGroupService, cfg)
 	industryService := usersvc.NewIndustryService(industryRepo)
 	chatGroupService := chatsvc.NewChatGroupService(chatGroupRepo)
-	eventService := eventsvc.NewEventService(eventRepo, eventUserInfoRepo, userRepo, fileRepo, chatGroupService)
+	eventService := eventsvc.NewEventService(eventRepo, eventUserInfoRepo, userRepo, fileRepo, chatGroupService, eventstock.NewStockService(), cache.New[int, *eventmodel.Event](3*time.Second))
 	eventUserInfoService := eventsvc.NewEventUserInfoService(eventUserInfoRepo)
 	userRoleService := usersvc.NewUserRoleService(userRoleRepo)
 	chatService := chatsvc.NewChatService(chatRepo, chatGroupRepo, userRepo)

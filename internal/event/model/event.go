@@ -21,6 +21,8 @@ type Event struct {
 	EventEndTime          time.Time `json:"event_end_time" gorm:"column:event_end_time"`                        // 活动结束时间
 	RegistrationStartTime time.Time `json:"registration_start_time" gorm:"column:registration_start_time"`      // 活动报名开始时间
 	RegistrationEndTime   time.Time `json:"registration_end_time" gorm:"column:registration_end_time"`          // 活动报名截止时间
+	MaxRegistrants        int       `json:"max_registrants" gorm:"column:max_registrants;default:0"`            // 最大报名人数
+	CurrentRegistrants    int       `json:"current_registrants" gorm:"column:current_registrants;default:0"`    // 当前报名人数
 	EventAddress          string    `json:"event_address" gorm:"type:varchar(255);column:event_address"`        // 活动地址
 	RegistrationFee       float64   `json:"registration_fee" gorm:"type:decimal(10,2);column:registration_fee"` // 报名费用
 	CoverImageURL         string    `json:"cover_image_url" gorm:"column:cover_image_url"`                      // 封面图片URL

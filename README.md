@@ -185,8 +185,10 @@ MySQL（文章/活动）
 ### 配置
 
 创建配置文件：
+
 config.yaml
 docker-compose.infra.yaml
+
 配置项参考：
 config-demo.yaml
 docker-compose-demo.infra.yaml

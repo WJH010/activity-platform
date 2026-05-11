@@ -83,6 +83,8 @@ func main() {
 	// 8.初始化依赖及注册路由
 	routes.SetupRoutes(cfg, router, minioRepo)
 
+	// pprof.Register(router) // 开启 pprof 后门
+
 	PORT := cfg.App.Port
 	logrus.Infof("服务器运行在端口 %d", PORT)
 	if err := http.ListenAndServe(":"+strconv.Itoa(PORT), router); err != nil {

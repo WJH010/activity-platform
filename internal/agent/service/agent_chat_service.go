@@ -1,15 +1,15 @@
 package service
 
 import (
-	"activity-platform/internal/agent/dto"
-	"activity-platform/internal/agent/engine"
-	"activity-platform/internal/agent/llm"
-	"activity-platform/internal/agent/model"
-	"activity-platform/internal/agent/repository"
-	"activity-platform/internal/agent/skill"
-	"activity-platform/internal/config"
 	"context"
 	"encoding/json"
+	"event-platform/internal/agent/dto"
+	"event-platform/internal/agent/engine"
+	"event-platform/internal/agent/llm"
+	"event-platform/internal/agent/model"
+	"event-platform/internal/agent/repository"
+	"event-platform/internal/agent/skill"
+	"event-platform/internal/config"
 	"fmt"
 	"strings"
 

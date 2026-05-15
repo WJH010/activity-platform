@@ -7,8 +7,8 @@ import (
 
 	_ "embed"
 
-	"activity-platform/internal/agent/rag/search"
-	"activity-platform/internal/agent/skill"
+	"event-platform/internal/agent/rag/search"
+	"event-platform/internal/agent/skill"
 )
 
 //go:embed skill.md

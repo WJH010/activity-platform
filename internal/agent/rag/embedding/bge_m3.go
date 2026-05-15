@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"activity-platform/internal/config"
+	"event-platform/internal/config"
 
 	"github.com/sirupsen/logrus"
 )

@@ -1,8 +1,8 @@
 package pipeline
 
 import (
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"

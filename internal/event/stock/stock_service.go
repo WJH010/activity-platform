@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	rd "activity-platform/internal/redis"
+	rd "event-platform/internal/redis"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"

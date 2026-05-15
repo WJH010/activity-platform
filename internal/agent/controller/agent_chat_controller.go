@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"activity-platform/internal/agent/dto"
-	"activity-platform/internal/agent/engine"
-	"activity-platform/internal/agent/service"
-	"activity-platform/internal/utils"
 	"encoding/json"
+	"event-platform/internal/agent/dto"
+	"event-platform/internal/agent/engine"
+	"event-platform/internal/agent/service"
+	"event-platform/internal/utils"
 	"fmt"
 	"io"
 	"net/http"

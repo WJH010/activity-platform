@@ -1,10 +1,10 @@
 package chat
 
 import (
-	"activity-platform/internal/chat/dto"
-	"activity-platform/internal/chat/service"
 	"context"
 	"encoding/json"
+	"event-platform/internal/chat/dto"
+	"event-platform/internal/chat/service"
 	"sync"
 	"time"
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"activity-platform/internal/agent/rag/embedding"
-	"activity-platform/internal/agent/rag/milvus"
+	"event-platform/internal/agent/rag/embedding"
+	"event-platform/internal/agent/rag/milvus"
 
 	"github.com/milvus-io/milvus/client/v2/column"
 	"github.com/milvus-io/milvus/client/v2/entity"

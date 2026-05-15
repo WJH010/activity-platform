@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"activity-platform/internal/config"
+	"event-platform/internal/config"
 
 	"github.com/milvus-io/milvus/client/v2/milvusclient"
 	"github.com/sirupsen/logrus"

@@ -3,9 +3,9 @@ package controller
 import (
 	"fmt"
 
-	"activity-platform/internal/user/dto"
-	"activity-platform/internal/user/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/user/dto"
+	"event-platform/internal/user/service"
+	"event-platform/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

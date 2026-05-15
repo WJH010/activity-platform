@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"activity-platform/internal/file/dto"
-	"activity-platform/internal/file/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/file/dto"
+	"event-platform/internal/file/service"
+	"event-platform/internal/utils"
 	"fmt"
 	"os"
 	"path/filepath"

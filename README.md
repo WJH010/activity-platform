@@ -1,4 +1,4 @@
-# Activity Platform
+# Event Platform
 
 基于 Go + Gin 框架开发的智能活动管理平台，采用分层架构设计，提供活动发布报名、实时群聊、消息通知、AI Agent 智能助手等核心能力，支撑高并发活动场景与长连接稳定通信。
 
@@ -20,7 +20,7 @@
 ## 项目结构
 
 ```
-activity-platform/
+event-platform/
 ├── cmd/
 │   └── main.go                          # 应用入口
 ├── internal/

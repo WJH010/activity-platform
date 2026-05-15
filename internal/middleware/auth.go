@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"activity-platform/internal/config"
-	rd "activity-platform/internal/redis"
-	"activity-platform/internal/utils"
 	"crypto/sha256"
 	"errors"
+	"event-platform/internal/config"
+	rd "event-platform/internal/redis"
+	"event-platform/internal/utils"
 	"fmt"
 	"strings"
 

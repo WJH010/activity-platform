@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"activity-platform/internal/article/model"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/article/model"
+	"event-platform/internal/utils"
 	"fmt"
 
 	"gorm.io/gorm"

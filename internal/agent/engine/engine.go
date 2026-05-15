@@ -1,10 +1,10 @@
 package engine
 
 import (
-	"activity-platform/internal/agent/llm"
-	"activity-platform/internal/agent/skill"
 	"context"
 	"encoding/json"
+	"event-platform/internal/agent/llm"
+	"event-platform/internal/agent/skill"
 	"fmt"
 	"strings"
 	"unicode/utf8"

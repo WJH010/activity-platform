@@ -1,11 +1,11 @@
 package service
 
 import (
-	"activity-platform/internal/message/dto"
-	"activity-platform/internal/message/model"
-	"activity-platform/internal/message/repository"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/message/dto"
+	"event-platform/internal/message/model"
+	"event-platform/internal/message/repository"
+	"event-platform/internal/utils"
 	"fmt"
 
 	"github.com/sirupsen/logrus"

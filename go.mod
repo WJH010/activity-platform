@@ -1,4 +1,4 @@
-module activity-platform
+module event-platform
 
 go 1.25.0
 

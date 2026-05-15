@@ -10,7 +10,7 @@ import (
 	"text/template"
 	"time"
 
-	"activity-platform/internal/agent/model"
+	"event-platform/internal/agent/model"
 
 	"github.com/sirupsen/logrus"
 )

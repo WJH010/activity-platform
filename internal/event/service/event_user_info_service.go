@@ -1,10 +1,10 @@
 package service
 
 import (
-	"activity-platform/internal/event/dto"
-	"activity-platform/internal/event/model"
-	"activity-platform/internal/event/repository"
 	"context"
+	"event-platform/internal/event/dto"
+	"event-platform/internal/event/model"
+	"event-platform/internal/event/repository"
 )
 
 type EventUserInfoService interface {

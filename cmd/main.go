@@ -1,13 +1,13 @@
 package main
 
 import (
-	"activity-platform/internal/config"
-	"activity-platform/internal/database"
-	filerepo "activity-platform/internal/file/repository"
-	"activity-platform/internal/middleware"
-	"activity-platform/internal/redis"
-	"activity-platform/internal/routes"
-	"activity-platform/internal/utils"
+	"event-platform/internal/config"
+	"event-platform/internal/database"
+	filerepo "event-platform/internal/file/repository"
+	"event-platform/internal/middleware"
+	"event-platform/internal/redis"
+	"event-platform/internal/routes"
+	"event-platform/internal/utils"
 	"log"
 	"net/http"
 	"strconv"

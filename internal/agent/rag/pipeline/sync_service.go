@@ -1,11 +1,11 @@
 package pipeline
 
 import (
-	"activity-platform/internal/agent/rag/embedding"
-	"activity-platform/internal/agent/rag/milvus"
-	articlerepo "activity-platform/internal/article/repository"
-	eventrepo "activity-platform/internal/event/repository"
 	"context"
+	"event-platform/internal/agent/rag/embedding"
+	"event-platform/internal/agent/rag/milvus"
+	articlerepo "event-platform/internal/article/repository"
+	eventrepo "event-platform/internal/event/repository"
 	"fmt"
 	"strings"
 	"sync"

@@ -1,11 +1,11 @@
 package repository
 
 import (
-	"activity-platform/internal/article/dto"
-	"activity-platform/internal/article/model"
-	"activity-platform/internal/utils"
 	"context"
 	"errors"
+	"event-platform/internal/article/dto"
+	"event-platform/internal/article/model"
+	"event-platform/internal/utils"
 	"fmt"
 	"time"
 

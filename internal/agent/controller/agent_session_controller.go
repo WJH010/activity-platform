@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"activity-platform/internal/agent/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/agent/service"
+	"event-platform/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

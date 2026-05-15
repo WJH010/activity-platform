@@ -1,9 +1,9 @@
 package service
 
 import (
-	"activity-platform/internal/notice/model"
-	"activity-platform/internal/notice/repository"
 	"context"
+	"event-platform/internal/notice/model"
+	"event-platform/internal/notice/repository"
 )
 
 // NoticeService 服务接口，定义方法，接收 context.Context 和数据模型。

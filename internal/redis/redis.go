@@ -1,8 +1,8 @@
 package redis
 
 import (
-	"activity-platform/internal/config"
 	"context"
+	"event-platform/internal/config"
 	"fmt"
 	"time"
 

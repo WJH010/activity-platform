@@ -1,11 +1,11 @@
 package service
 
 import (
-	"activity-platform/internal/agent/dto"
-	"activity-platform/internal/agent/model"
-	"activity-platform/internal/agent/repository"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/agent/dto"
+	"event-platform/internal/agent/model"
+	"event-platform/internal/agent/repository"
+	"event-platform/internal/utils"
 )
 
 // SkillService Skill管理服务接口

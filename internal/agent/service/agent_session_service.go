@@ -1,12 +1,12 @@
 package service
 
 import (
-	"activity-platform/internal/agent/dto"
-	"activity-platform/internal/agent/model"
-	"activity-platform/internal/agent/repository"
-	"activity-platform/internal/utils"
 	"context"
 	"encoding/json"
+	"event-platform/internal/agent/dto"
+	"event-platform/internal/agent/model"
+	"event-platform/internal/agent/repository"
+	"event-platform/internal/utils"
 
 	"github.com/google/uuid"
 )

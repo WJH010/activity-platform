@@ -1,11 +1,11 @@
 package repository
 
 import (
-	"activity-platform/internal/message/dto"
-	"activity-platform/internal/message/model"
-	"activity-platform/internal/utils"
 	"context"
 	"errors"
+	"event-platform/internal/message/dto"
+	"event-platform/internal/message/model"
+	"event-platform/internal/utils"
 	"fmt"
 
 	"gorm.io/gorm"

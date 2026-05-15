@@ -1,4 +1,4 @@
-# Activity Platform
+# Event Platform
 
 基于 Go + Gin 框架开发的智能活动管理平台，采用分层架构设计，提供活动发布报名、实时群聊、消息通知、AI Agent 智能助手等核心能力，支撑高并发活动场景与长连接稳定通信。
 
@@ -20,7 +20,7 @@
 ## 项目结构
 
 ```
-activity-platform/
+event-platform/
 ├── cmd/
 │   └── main.go                          # 应用入口
 ├── internal/
@@ -139,6 +139,51 @@ activity-platform/
 | 运行时长 | 20.1 s |
 
 > 压测阶段：5s 爬升至 900 VU → 10s 持续 900 VU → 5s 降至 0。100 个名额被正确扣减，其余请求均返回"报名人数已满"，零超卖。
+
+### WebSocket 群聊压测结果
+
+测试工具：k6 + pprof，1000 并发用户同群建连
+
+#### 内存控制
+
+| 指标 | 值 |
+|------|-----|
+| 单连接平均内存开销 | ~13 KB（含 TCP 读写 Buffer + Client 结构体） |
+| 2C4G 服务器理论最大连接数 | 10 万+ |
+
+> 测算方法：pprof/heap 采集 `inuse_space`，压测前后强制 GC 取差值，除以并发连接数。
+
+#### 连接生命周期管理
+
+| 指标 | 值 |
+|------|-----|
+| 2000+ 读写协程释放后回落 | 闲置底线 ~40 个协程 |
+| 协程泄漏 | **Zero Goroutine Leak** |
+
+> 验证方法：1000 VU 建连（产生 ~2000 ReadPump/WritePump 协程）→ 保持 5 分钟 → 全部断开，pprof/goroutine 观测协程数平滑回落至建连前水平，无残留。
+
+#### 瓶颈诊断
+
+| 瓶颈点 | 现象 | 根因 |
+|--------|------|------|
+| 群聊并发写入 | 1000 人同群高频发消息时 ReadPump 协程大面积阻塞 | `chat_groups` 表行锁竞争 → 200ms Slow SQL |
+
+> 诊断方法：pprof 火焰图 + MySQL 慢日志，定位到 `CreateMessage` 事务中 `UpdateLatestMessageID` 对 `chat_groups` 行的锁等待。
+
+#### 演进规划（WIP）
+
+针对群聊消息同步落库的性能瓶颈，正在进行异步化重构：
+
+```
+当前：ReadPump → 同步写 DB（事务: CreateMessage + UpdateLatestMessageID）→ 广播
+                                          ↑ 行锁竞争点
+
+目标：ReadPump → MQ / Redis 缓冲层 → 异步批量刷盘 → 广播
+                          ↑ 削峰填谷，解耦关键路径
+```
+
+- 引入 MQ / Redis 充当缓冲层，将关键路径上的同步写库降维为异步批量刷盘
+- 彻底解决 O(N²) 广播风暴和 MySQL 行锁竞争带来的系统拥塞
 
 ### AI Agent ReAct 引擎
 

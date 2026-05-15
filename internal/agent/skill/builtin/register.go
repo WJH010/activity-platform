@@ -1,22 +1,22 @@
 package builtin
 
 import (
-	"activity-platform/internal/agent/rag/search"
-	"activity-platform/internal/agent/skill"
-	"activity-platform/internal/agent/skill/builtin/article_create"
-	"activity-platform/internal/agent/skill/builtin/article_detail"
-	"activity-platform/internal/agent/skill/builtin/article_query"
-	"activity-platform/internal/agent/skill/builtin/event_cancel"
-	"activity-platform/internal/agent/skill/builtin/event_detail"
-	"activity-platform/internal/agent/skill/builtin/event_query"
-	"activity-platform/internal/agent/skill/builtin/event_register"
-	"activity-platform/internal/agent/skill/builtin/semantic_search"
-	"activity-platform/internal/agent/skill/builtin/user_info"
-	"activity-platform/internal/agent/skill/builtin/user_registered_events"
+	"event-platform/internal/agent/rag/search"
+	"event-platform/internal/agent/skill"
+	"event-platform/internal/agent/skill/builtin/article_create"
+	"event-platform/internal/agent/skill/builtin/article_detail"
+	"event-platform/internal/agent/skill/builtin/article_query"
+	"event-platform/internal/agent/skill/builtin/event_cancel"
+	"event-platform/internal/agent/skill/builtin/event_detail"
+	"event-platform/internal/agent/skill/builtin/event_query"
+	"event-platform/internal/agent/skill/builtin/event_register"
+	"event-platform/internal/agent/skill/builtin/semantic_search"
+	"event-platform/internal/agent/skill/builtin/user_info"
+	"event-platform/internal/agent/skill/builtin/user_registered_events"
 
-	articleSvc "activity-platform/internal/article/service"
-	eventSvc "activity-platform/internal/event/service"
-	userSvc "activity-platform/internal/user/service"
+	articleSvc "event-platform/internal/article/service"
+	eventSvc "event-platform/internal/event/service"
+	userSvc "event-platform/internal/user/service"
 )
 
 // Dependencies 内置Skill所需的依赖

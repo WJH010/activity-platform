@@ -5,8 +5,8 @@ import (
 
 	_ "embed"
 
-	"activity-platform/internal/agent/skill"
-	eventSvc "activity-platform/internal/event/service"
+	"event-platform/internal/agent/skill"
+	eventSvc "event-platform/internal/event/service"
 )
 
 //go:embed skill.md

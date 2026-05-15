@@ -1,8 +1,8 @@
 package skill
 
 import (
-	"activity-platform/internal/agent/llm"
 	"context"
+	"event-platform/internal/agent/llm"
 	"fmt"
 	"sync"
 

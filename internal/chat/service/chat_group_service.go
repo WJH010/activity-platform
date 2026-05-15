@@ -7,11 +7,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"activity-platform/internal/chat/dto"
-	"activity-platform/internal/chat/model"
-	"activity-platform/internal/chat/repository"
-	db "activity-platform/internal/database"
-	"activity-platform/internal/utils"
+	"event-platform/internal/chat/dto"
+	"event-platform/internal/chat/model"
+	"event-platform/internal/chat/repository"
+	db "event-platform/internal/database"
+	"event-platform/internal/utils"
 )
 
 // ChatGroupService 定义群组业务逻辑接口

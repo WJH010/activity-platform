@@ -1,6 +1,6 @@
 # 应用基础配置
 app:
-  name: activity-platform
+  name: event-platform
   env: production  # 可选: development, testing, production
   port: 8080
   debug: false

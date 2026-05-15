@@ -1,10 +1,10 @@
 package service
 
 import (
-	"activity-platform/internal/message/dto"
-	"activity-platform/internal/message/model"
-	"activity-platform/internal/message/repository"
 	"context"
+	"event-platform/internal/message/dto"
+	"event-platform/internal/message/model"
+	"event-platform/internal/message/repository"
 
 	"gorm.io/gorm"
 )

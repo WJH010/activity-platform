@@ -1,11 +1,11 @@
 package service
 
 import (
-	"activity-platform/internal/user/dto"
-	"activity-platform/internal/user/model"
-	"activity-platform/internal/user/repository"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/user/dto"
+	"event-platform/internal/user/model"
+	"event-platform/internal/user/repository"
+	"event-platform/internal/utils"
 )
 
 // IndustryService 服务接口，定义行业相关的业务逻辑方法

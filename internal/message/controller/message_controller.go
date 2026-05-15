@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"activity-platform/internal/message/dto"
-	"activity-platform/internal/message/model"
-	"activity-platform/internal/message/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/message/dto"
+	"event-platform/internal/message/model"
+	"event-platform/internal/message/service"
+	"event-platform/internal/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"

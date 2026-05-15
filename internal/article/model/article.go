@@ -1,7 +1,7 @@
 package model
 
 import (
-	"activity-platform/internal/article/dto"
+	"event-platform/internal/article/dto"
 	"time"
 )
 

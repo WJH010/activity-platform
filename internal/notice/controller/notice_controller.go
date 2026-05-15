@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"activity-platform/internal/notice/dto"
-	"activity-platform/internal/notice/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/notice/dto"
+	"event-platform/internal/notice/service"
+	"event-platform/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

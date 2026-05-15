@@ -1,17 +1,17 @@
 package service
 
 import (
-	"activity-platform/internal/cache"
-	chatmodel "activity-platform/internal/chat/model"
-	chatSvc "activity-platform/internal/chat/service"
-	"activity-platform/internal/event/dto"
-	"activity-platform/internal/event/model"
-	"activity-platform/internal/event/repository"
-	"activity-platform/internal/event/stock"
-	filerepo "activity-platform/internal/file/repository"
-	userrepo "activity-platform/internal/user/repository"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/cache"
+	chatmodel "event-platform/internal/chat/model"
+	chatSvc "event-platform/internal/chat/service"
+	"event-platform/internal/event/dto"
+	"event-platform/internal/event/model"
+	"event-platform/internal/event/repository"
+	"event-platform/internal/event/stock"
+	filerepo "event-platform/internal/file/repository"
+	userrepo "event-platform/internal/user/repository"
+	"event-platform/internal/utils"
 	"time"
 
 	"github.com/sirupsen/logrus"

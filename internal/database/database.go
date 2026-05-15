@@ -1,7 +1,7 @@
 package database
 
 import (
-	"activity-platform/internal/config"
+	"event-platform/internal/config"
 	"fmt"
 	"time"
 

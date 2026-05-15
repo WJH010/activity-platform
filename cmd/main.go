@@ -1,13 +1,13 @@
 package main
 
 import (
-	"activity-platform/internal/config"
-	"activity-platform/internal/database"
-	filerepo "activity-platform/internal/file/repository"
-	"activity-platform/internal/middleware"
-	"activity-platform/internal/redis"
-	"activity-platform/internal/routes"
-	"activity-platform/internal/utils"
+	"event-platform/internal/config"
+	"event-platform/internal/database"
+	filerepo "event-platform/internal/file/repository"
+	"event-platform/internal/middleware"
+	"event-platform/internal/redis"
+	"event-platform/internal/routes"
+	"event-platform/internal/utils"
 	"log"
 	"net/http"
 	"strconv"
@@ -82,6 +82,8 @@ func main() {
 
 	// 8.初始化依赖及注册路由
 	routes.SetupRoutes(cfg, router, minioRepo)
+
+	// pprof.Register(router) // 开启 pprof 后门
 
 	PORT := cfg.App.Port
 	logrus.Infof("服务器运行在端口 %d", PORT)

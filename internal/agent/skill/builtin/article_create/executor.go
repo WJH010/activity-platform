@@ -6,9 +6,9 @@ import (
 
 	_ "embed"
 
-	"activity-platform/internal/agent/skill"
-	"activity-platform/internal/article/model"
-	articleSvc "activity-platform/internal/article/service"
+	"event-platform/internal/agent/skill"
+	"event-platform/internal/article/model"
+	articleSvc "event-platform/internal/article/service"
 )
 
 //go:embed skill.md

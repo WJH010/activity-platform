@@ -1,16 +1,16 @@
 package service
 
 import (
-	"activity-platform/internal/file/dto"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/file/dto"
+	"event-platform/internal/utils"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"activity-platform/internal/file/model"
-	"activity-platform/internal/file/repository"
+	"event-platform/internal/file/model"
+	"event-platform/internal/file/repository"
 )
 
 // FileService 文件服务接口

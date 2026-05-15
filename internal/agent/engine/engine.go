@@ -1,10 +1,10 @@
 package engine
 
 import (
-	"activity-platform/internal/agent/llm"
-	"activity-platform/internal/agent/skill"
 	"context"
 	"encoding/json"
+	"event-platform/internal/agent/llm"
+	"event-platform/internal/agent/skill"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -64,6 +64,7 @@ func (e *Engine) Run(ctx context.Context, messages []llm.Message) (*AgentResult,
 	var finalContent strings.Builder
 	var toolCallRecords []ToolCallRecord
 
+	// 非流式ReAct循环
 	for round := 0; round < e.config.MaxReactRounds; round++ {
 		resp, err := e.provider.Chat(ctx, workingMessages, tools)
 		if err != nil {
@@ -82,6 +83,7 @@ func (e *Engine) Run(ctx context.Context, messages []llm.Message) (*AgentResult,
 			break
 		}
 
+		// 处理工具调用
 		for _, tc := range resp.ToolCalls {
 			record := e.executeToolCall(ctx, tc)
 			toolCallRecords = append(toolCallRecords, record)
@@ -109,6 +111,7 @@ func (e *Engine) runReactLoop(ctx context.Context, messages []llm.Message, tools
 
 	var totalReasoningContent string // 跨轮次累积推理内容
 
+	// 流式ReAct循环
 	for round := 0; round < e.config.MaxReactRounds; round++ {
 		// logrus.Debugf("[AgentEngine] ReAct Round %d/%d", round+1, e.config.MaxReactRounds)
 

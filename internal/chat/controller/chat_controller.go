@@ -1,12 +1,12 @@
 package controller
 
 import (
-	"activity-platform/internal/chat"
-	"activity-platform/internal/chat/dto"
-	"activity-platform/internal/chat/repository"
-	"activity-platform/internal/chat/service"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/chat"
+	"event-platform/internal/chat/dto"
+	"event-platform/internal/chat/repository"
+	"event-platform/internal/chat/service"
+	"event-platform/internal/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

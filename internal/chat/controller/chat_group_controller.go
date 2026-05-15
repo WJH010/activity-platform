@@ -3,10 +3,10 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 
-	"activity-platform/internal/chat/dto"
-	"activity-platform/internal/chat/model"
-	"activity-platform/internal/chat/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/chat/dto"
+	"event-platform/internal/chat/model"
+	"event-platform/internal/chat/service"
+	"event-platform/internal/utils"
 )
 
 // ChatGroupController 负责群组相关的 HTTP 请求

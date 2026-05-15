@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"activity-platform/internal/article/dto"
-	"activity-platform/internal/article/model"
-	"activity-platform/internal/article/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/article/dto"
+	"event-platform/internal/article/model"
+	"event-platform/internal/article/service"
+	"event-platform/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

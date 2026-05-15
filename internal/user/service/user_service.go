@@ -1,13 +1,6 @@
 package service
 
 import (
-	"activity-platform/internal/config"
-	msgsvc "activity-platform/internal/message/service"
-	rd "activity-platform/internal/redis"
-	"activity-platform/internal/user/dto"
-	"activity-platform/internal/user/model"
-	"activity-platform/internal/user/repository"
-	"activity-platform/internal/utils"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -18,6 +11,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"event-platform/internal/config"
+	msgsvc "event-platform/internal/message/service"
+	rd "event-platform/internal/redis"
+	"event-platform/internal/user/dto"
+	"event-platform/internal/user/model"
+	"event-platform/internal/user/repository"
+	"event-platform/internal/utils"
 	"fmt"
 	"io"
 	"net/http"

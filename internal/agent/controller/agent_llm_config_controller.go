@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"activity-platform/internal/agent/dto"
-	"activity-platform/internal/agent/llm"
-	"activity-platform/internal/agent/service"
-	"activity-platform/internal/utils"
+	"event-platform/internal/agent/dto"
+	"event-platform/internal/agent/llm"
+	"event-platform/internal/agent/service"
+	"event-platform/internal/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

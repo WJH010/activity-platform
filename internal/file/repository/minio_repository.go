@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/utils"
 	"fmt"
 
 	"github.com/minio/minio-go/v7"

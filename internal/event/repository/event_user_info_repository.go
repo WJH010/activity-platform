@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"activity-platform/internal/event/dto"
-	"activity-platform/internal/event/model"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/event/dto"
+	"event-platform/internal/event/model"
+	"event-platform/internal/utils"
 	"fmt"
 
 	"gorm.io/gorm"

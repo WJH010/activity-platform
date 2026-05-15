@@ -8,9 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"activity-platform/internal/chat/dto"
-	"activity-platform/internal/chat/model"
-	"activity-platform/internal/utils"
+	"event-platform/internal/chat/dto"
+	"event-platform/internal/chat/model"
+	"event-platform/internal/utils"
 )
 
 // ChatGroupRepository 定义群组数据访问接口

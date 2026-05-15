@@ -6,8 +6,8 @@ import (
 
 	_ "embed"
 
-	"activity-platform/internal/agent/skill"
-	userSvc "activity-platform/internal/user/service"
+	"event-platform/internal/agent/skill"
+	userSvc "event-platform/internal/user/service"
 )
 
 //go:embed skill.md

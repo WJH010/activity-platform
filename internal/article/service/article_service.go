@@ -1,13 +1,13 @@
 package service
 
 import (
-	"activity-platform/internal/article/dto"
-	"activity-platform/internal/article/model"
-	"activity-platform/internal/article/repository"
-	db "activity-platform/internal/database"
-	filerepo "activity-platform/internal/file/repository"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/article/dto"
+	"event-platform/internal/article/model"
+	"event-platform/internal/article/repository"
+	db "event-platform/internal/database"
+	filerepo "event-platform/internal/file/repository"
+	"event-platform/internal/utils"
 	"fmt"
 
 	"github.com/sirupsen/logrus"

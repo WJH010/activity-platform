@@ -1,11 +1,11 @@
 package service
 
 import (
-	"activity-platform/internal/article/dto"
-	"activity-platform/internal/article/model"
-	"activity-platform/internal/article/repository"
-	"activity-platform/internal/utils"
 	"context"
+	"event-platform/internal/article/dto"
+	"event-platform/internal/article/model"
+	"event-platform/internal/article/repository"
+	"event-platform/internal/utils"
 )
 
 // FieldTypeService 服务接口，定义方法，接收 context.Context 和数据模型。

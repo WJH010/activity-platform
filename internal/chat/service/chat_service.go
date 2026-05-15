@@ -7,12 +7,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"activity-platform/internal/chat/dto"
-	"activity-platform/internal/chat/model"
-	"activity-platform/internal/chat/repository"
-	"activity-platform/internal/database"
-	user_repo "activity-platform/internal/user/repository"
-	"activity-platform/internal/utils"
+	"event-platform/internal/chat/dto"
+	"event-platform/internal/chat/model"
+	"event-platform/internal/chat/repository"
+	"event-platform/internal/database"
+	user_repo "event-platform/internal/user/repository"
+	"event-platform/internal/utils"
 	"fmt"
 )
 

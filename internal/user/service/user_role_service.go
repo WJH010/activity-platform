@@ -1,9 +1,9 @@
 package service
 
 import (
-	"activity-platform/internal/user/dto"
-	"activity-platform/internal/user/repository"
 	"context"
+	"event-platform/internal/user/dto"
+	"event-platform/internal/user/repository"
 )
 
 // UserRoleService 定义用户角色服务接口

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -12,6 +11,8 @@ import (
 	"event-platform/internal/chat/repository"
 	db "event-platform/internal/database"
 	"event-platform/internal/utils"
+
+	"gorm.io/gorm"
 )
 
 // ChatGroupService 定义群组业务逻辑接口
@@ -51,42 +52,27 @@ func (svc *chatGroupServiceImpl) CreateGroup(ctx context.Context, req *model.Cha
 		CreateUser: creatorID,
 		UpdateUser: creatorID,
 	}
-
 	// 开启事务
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return nil, utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	// 使用 defer-recover 模式确保事务在 panic 时也能回滚
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
+	err := db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		// 创建群组
+		if err := svc.chatGroupRepo.CreateGroup(ctx, tx, group); err != nil {
+			return err
 		}
-	}()
-
-	// 1. 创建群组
-	if err := svc.chatGroupRepo.CreateGroup(ctx, tx, group); err != nil {
-		tx.Rollback()
+		// 创建群主成员数据
+		member := &model.ChatGroupMember{
+			GroupID:    int(group.ID),
+			UserID:     creatorID,
+			CreateUser: creatorID,
+			UpdateUser: creatorID,
+		}
+		// 创建群主成员
+		if err := svc.chatGroupRepo.CreateMember(ctx, tx, member); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
-	}
-
-	// 2. 创建群主成员
-	member := &model.ChatGroupMember{
-		GroupID:    int(group.ID),
-		UserID:     creatorID,
-		CreateUser: creatorID,
-		UpdateUser: creatorID,
-	}
-	if err := svc.chatGroupRepo.CreateMember(ctx, tx, member); err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return nil, utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
 	}
 
 	return group, nil
@@ -144,29 +130,9 @@ func (svc *chatGroupServiceImpl) AddMembers(ctx context.Context, groupID int, re
 		return nil
 	}
 
-	// 6. 批量插入新成员（在事务中）
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
-		}
-	}()
-
-	if err := svc.chatGroupRepo.AddMembers(ctx, tx, newMembers); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-
-	return nil
+	return db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		return svc.chatGroupRepo.AddMembers(ctx, tx, newMembers)
+	})
 }
 
 // RemoveMembers 从群组中移除成员
@@ -195,29 +161,9 @@ func (svc *chatGroupServiceImpl) RemoveMembers(ctx context.Context, groupID int,
 		return nil
 	}
 
-	// 3. 在事务中执行移除操作
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
-		}
-	}()
-
-	if err := svc.chatGroupRepo.RemoveMembers(ctx, tx, groupID, membersToRemove); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-
-	return nil
+	return db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		return svc.chatGroupRepo.RemoveMembers(ctx, tx, groupID, membersToRemove)
+	})
 }
 
 // ListGroupMembers 分页查询群组成员
@@ -288,29 +234,9 @@ func (svc *chatGroupServiceImpl) DeleteGroup(ctx context.Context, groupID int, o
 		return utils.NewBusinessError(utils.ErrCodePermissionDenied, "只有群主才能解散群组")
 	}
 
-	// 2. 在事务中执行删除操作
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
-		}
-	}()
-
-	if err := svc.chatGroupRepo.DeleteGroup(ctx, tx, groupID); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-
-	return nil
+	return db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		return svc.chatGroupRepo.DeleteGroup(ctx, tx, groupID)
+	})
 }
 
 // GetGroupByID 根据ID查询群组信息

@@ -8,9 +8,8 @@ import (
 	db "event-platform/internal/database"
 	filerepo "event-platform/internal/file/repository"
 	"event-platform/internal/utils"
-	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 // ArticleService 服务接口，定义方法，接收 context.Context 和数据模型。
@@ -90,37 +89,19 @@ func (svc *ArticleServiceImpl) CreateArticle(ctx context.Context, article *model
 	}
 
 	// 开启事务
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
-		}
-	}()
-
-	// 创建文章
-	if err := svc.articleRepo.CreateArticle(ctx, tx, article); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 如果有图片，更新images表的biz_id和biz_type
-	if len(imageIDList) > 0 {
-		if err := svc.fileRepo.BatchUpdateImageBizID(ctx, tx, imageIDList, article.ArticleID, utils.TypeArticle); err != nil {
-			tx.Rollback()
+	return db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		// 创建文章
+		if err := svc.articleRepo.CreateArticle(ctx, tx, article); err != nil {
 			return err
 		}
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-	return nil
+		// 如果有图片，更新images表的biz_id和biz_type
+		if len(imageIDList) > 0 {
+			if err := svc.fileRepo.BatchUpdateImageBizID(ctx, tx, imageIDList, article.ArticleID, utils.TypeArticle); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // UpdateArticle 更新文章
@@ -165,37 +146,19 @@ func (svc *ArticleServiceImpl) UpdateArticle(ctx context.Context, articleID int,
 	updateFields["update_user"] = userID
 
 	// 开启事务
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
-		}
-	}()
-
-	// 更新文章基本信息
-	if err := svc.articleRepo.UpdateArticle(ctx, tx, articleID, updateFields); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 更新图片关联（如果有）
-	if len(imageIDList) > 0 {
-		if err := svc.fileRepo.BatchUpdateImageBizID(ctx, tx, imageIDList, articleID, utils.TypeArticle); err != nil {
-			tx.Rollback()
+	return db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		// 更新文章基本信息
+		if err := svc.articleRepo.UpdateArticle(ctx, tx, articleID, updateFields); err != nil {
 			return err
 		}
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-	return nil
+		// 更新图片关联（如果有）
+		if len(imageIDList) > 0 {
+			if err := svc.fileRepo.BatchUpdateImageBizID(ctx, tx, imageIDList, articleID, utils.TypeArticle); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // 辅助函数：构建更新字段映射
@@ -243,31 +206,15 @@ func (svc *ArticleServiceImpl) DeleteArticle(ctx context.Context, articleID int,
 	}
 
 	// 开启事务
-	tx := db.GetDB().Begin()
-	if tx.Error != nil {
-		return utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
+	return db.WithTx(db.GetDB(), func(tx *gorm.DB) error {
+		// 更新文章基本信息
+		updateFields := map[string]interface{}{
+			"is_deleted":  utils.DeletedFlagYes,
+			"update_user": userID,
 		}
-	}()
-
-	// 软删除（更新is_deleted为Y，记录更新人）
-	updateFields := map[string]interface{}{
-		"is_deleted":  utils.DeletedFlagYes,
-		"update_user": userID,
-	}
-	if err := svc.articleRepo.UpdateArticle(ctx, tx, articleID, updateFields); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-	return nil
+		if err := svc.articleRepo.UpdateArticle(ctx, tx, articleID, updateFields); err != nil {
+			return err
+		}
+		return nil
+	})
 }

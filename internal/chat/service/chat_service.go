@@ -14,6 +14,8 @@ import (
 	user_repo "event-platform/internal/user/repository"
 	"event-platform/internal/utils"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 // 撤回消息的时间限制
@@ -43,117 +45,95 @@ func NewChatService(chatRepo repository.ChatRepository, chatGroupRepo repository
 
 // CreateMessage 负责处理并存储新的聊天消息
 func (s *ChatServiceImpl) CreateMessage(ctx context.Context, msg *dto.WebSocketMsg) (*dto.ClientMsg, []int, []byte, error) {
-	// 1. 解析客户端发送的原始消息
 	var clientMsg dto.ClientMsg
+	// 解析客户端消息
 	if err := json.Unmarshal(msg.Data, &clientMsg); err != nil {
 		logrus.Errorf("解析客户端消息失败, UserID: %d, GroupID: %d, RawData: %q, Error: %v", msg.UserID, msg.GroupID, msg.Data, err)
 		return nil, nil, nil, utils.NewBusinessError(utils.ErrCodeParamInvalid, "消息格式错误")
 	}
 
-	// 开启事务
-	tx := database.GetDB().Begin()
-	if tx.Error != nil {
-		return nil, nil, nil, utils.NewSystemError(fmt.Errorf("开启事务失败: %w", tx.Error))
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logrus.Panic("事务回滚，发生异常: ", r)
-		}
-	}()
-
 	var chatMessage *model.ChatMessage
 
-	// 2. 根据消息类型执行不同操作
-	switch clientMsg.Type {
-	case "chat":
-		// 对于普通聊天消息，直接创建
-		chatMessage = &model.ChatMessage{
-			GroupID:    msg.GroupID,
-			SenderID:   msg.UserID,
-			SendAt:     time.Now(),
-			Content:    clientMsg.Content,
-			MsgType:    1, // 文本消息
-			CreateUser: msg.UserID,
-			UpdateUser: msg.UserID,
-		}
-	case "revoke":
-		// 对于撤回消息
-		var revokeInfo struct {
-			MsgIDToRevoke int64 `json:"msg_id_to_revoke"`
-		}
-		if err := json.Unmarshal([]byte(clientMsg.Content), &revokeInfo); err != nil {
-			tx.Rollback()
-			logrus.Errorf("解析撤回消息内容失败, RawContent: %s, Error: %v", clientMsg.Content, err)
-			return nil, nil, nil, utils.NewBusinessError(utils.ErrCodeParamInvalid, "撤回消息格式错误")
-		}
+	// 开启事务
+	err := database.WithTx(database.GetDB(), func(tx *gorm.DB) error {
+		// 处理不同类型的聊天消息
+		switch clientMsg.Type {
+		// 普通聊天消息，直接存储
+		case "chat":
+			chatMessage = &model.ChatMessage{
+				GroupID:    msg.GroupID,
+				SenderID:   msg.UserID,
+				SendAt:     time.Now(),
+				Content:    clientMsg.Content,
+				MsgType:    1,
+				CreateUser: msg.UserID,
+				UpdateUser: msg.UserID,
+			}
+		// 撤回消息，需要检查消息是否存在并是否过期
+		case "revoke":
+			var revokeInfo struct {
+				MsgIDToRevoke int64 `json:"msg_id_to_revoke"`
+			}
+			// 解析撤回消息内容
+			if err := json.Unmarshal([]byte(clientMsg.Content), &revokeInfo); err != nil {
+				logrus.Errorf("解析撤回消息内容失败, RawContent: %s, Error: %v", clientMsg.Content, err)
+				return utils.NewBusinessError(utils.ErrCodeParamInvalid, "撤回消息格式错误")
+			}
+			// 检查要撤回的消息是否存在
+			originalMsg, err := s.chatRepo.GetMessageByID(ctx, revokeInfo.MsgIDToRevoke)
+			if err != nil {
+				return err
+			}
+			if originalMsg == nil || originalMsg.SenderID != msg.UserID {
+				return utils.NewBusinessError(utils.ErrCodePermissionDenied, "消息不存在或您无权撤回")
+			}
+			if time.Since(originalMsg.CreateTime) > revokeTimeout {
+				return utils.NewBusinessError(utils.ErrCodePermissionDenied, "超过2分钟，消息无法撤回")
+			}
 
-		// 2.1. 检查消息是否可以被撤回
-		originalMsg, err := s.chatRepo.GetMessageByID(ctx, revokeInfo.MsgIDToRevoke)
-		if err != nil {
-			tx.Rollback()
-			return nil, nil, nil, err
-		}
-		if originalMsg == nil || originalMsg.SenderID != msg.UserID {
-			tx.Rollback()
-			return nil, nil, nil, utils.NewBusinessError(utils.ErrCodePermissionDenied, "消息不存在或您无权撤回")
-		}
-		if time.Since(originalMsg.CreateTime) > revokeTimeout {
-			tx.Rollback()
-			return nil, nil, nil, utils.NewBusinessError(utils.ErrCodePermissionDenied, "超过2分钟，消息无法撤回")
-		}
+			if err := s.chatRepo.RevokeMessage(ctx, tx, revokeInfo.MsgIDToRevoke, msg.UserID); err != nil {
+				logrus.Errorf("标记消息为已撤回失败, MsgID: %d, UserID: %d, Error: %v", revokeInfo.MsgIDToRevoke, msg.UserID, err)
+				return err
+			}
 
-		// 2.2. 将原消息标记为已撤回
-		if err := s.chatRepo.RevokeMessage(ctx, tx, revokeInfo.MsgIDToRevoke, msg.UserID); err != nil {
-			tx.Rollback()
-			logrus.Errorf("标记消息为已撤回失败, MsgID: %d, UserID: %d, Error: %v", revokeInfo.MsgIDToRevoke, msg.UserID, err)
-			return nil, nil, nil, err
+			chatMessage = &model.ChatMessage{
+				GroupID:    msg.GroupID,
+				SenderID:   msg.UserID,
+				SendAt:     time.Now(),
+				Content:    clientMsg.Content,
+				MsgType:    3,
+				CreateUser: msg.UserID,
+				UpdateUser: msg.UserID,
+			}
+		// 其他类型的消息，直接存储
+		default:
+			chatMessage = &model.ChatMessage{
+				GroupID:    msg.GroupID,
+				SenderID:   msg.UserID,
+				SendAt:     time.Now(),
+				Content:    clientMsg.Content,
+				MsgType:    1,
+				CreateUser: msg.UserID,
+				UpdateUser: msg.UserID,
+			}
 		}
-
-		// 2.3. 创建一条新的“撤回通知”消息
-		chatMessage = &model.ChatMessage{
-			GroupID:    msg.GroupID,
-			SenderID:   msg.UserID,
-			SendAt:     time.Now(),
-			Content:    clientMsg.Content, // 内容仍为 {"msg_id_to_revoke": ...}
-			MsgType:    3,                 // 撤回通知
-			CreateUser: msg.UserID,
-			UpdateUser: msg.UserID,
+		// 存储消息到数据库
+		if err := s.chatRepo.CreateMessage(ctx, tx, chatMessage); err != nil {
+			logrus.Errorf("数据库创建消息失败, UserID: %d, GroupID: %d, Error: %v", msg.UserID, msg.GroupID, err)
+			return err
 		}
-	default:
-		// 默认为文本消息
-		chatMessage = &model.ChatMessage{
-			GroupID:    msg.GroupID,
-			SenderID:   msg.UserID,
-			SendAt:     time.Now(),
-			Content:    clientMsg.Content,
-			MsgType:    1,
-			CreateUser: msg.UserID,
-			UpdateUser: msg.UserID,
+		// 更新群组最新消息ID
+		if err := s.chatGroupRepo.UpdateLatestMessageID(ctx, tx, msg.GroupID, chatMessage.ID); err != nil {
+			logrus.Errorf("更新群组最新消息ID失败, GroupID: %d, MessageID: %d, Error: %v", msg.GroupID, chatMessage.ID, err)
+			return err
 		}
-	}
-
-	// 3. 持久化新创建的消息（无论是聊天消息还是撤回通知）
-	if err := s.chatRepo.CreateMessage(ctx, tx, chatMessage); err != nil {
-		tx.Rollback()
-		logrus.Errorf("数据库创建消息失败, UserID: %d, GroupID: %d, Error: %v", msg.UserID, msg.GroupID, err)
+		return nil
+	})
+	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	// 4. 更新群组的最新消息ID
-	if err := s.chatGroupRepo.UpdateLatestMessageID(ctx, tx, msg.GroupID, chatMessage.ID); err != nil {
-		tx.Rollback()
-		logrus.Errorf("更新群组最新消息ID失败, GroupID: %d, MessageID: %d, Error: %v", msg.GroupID, chatMessage.ID, err)
-		return nil, nil, nil, err
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return nil, nil, nil, utils.NewSystemError(fmt.Errorf("提交事务失败: %w", err))
-	}
-
-	// 5. 准备个人通知内容
+	// 准备个人通知内容
 	notificationData, memberIDs, err := s.prepareNotification(context.Background(), msg.GroupID, msg.UserID, chatMessage)
 	if err != nil {
 		// 个人通知的准备失败不应阻塞主流程，只记录日志
@@ -174,7 +154,7 @@ func (s *ChatServiceImpl) CreateMessage(ctx context.Context, msg *dto.WebSocketM
 	clientMsg.SenderName = sender.Nickname
 	clientMsg.SenderAvatar = sender.AvatarURL
 
-	// 6. 持久化成功后，将消息ID填充回 clientMsg 以供广播
+	// 持久化成功后，将消息ID填充回 clientMsg 以供广播
 	clientMsg.ID = chatMessage.ID
 	clientMsg.SendAt = chatMessage.SendAt
 	return &clientMsg, memberIDs, notificationData, nil

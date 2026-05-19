@@ -24,10 +24,10 @@ func Recovery() gin.HandlerFunc {
 				var filteredLines []string
 
 				// 过滤规则：只保留包含项目业务代码路径的行（根据实际项目路径调整关键字）
-				// 例如项目代码路径包含 "news-release-platform/internal/"，则保留相关行
+				// 例如项目代码路径包含 "event-platform/internal/"，则保留相关行
 				for i, line := range lines {
 					// 保留业务代码调用栈（路径包含项目内部包路径）
-					if strings.Contains(line, "news-release-platform/internal/") {
+					if strings.Contains(line, "event-platform/internal/") {
 						// 同时保留函数名行和对应的文件行（通常是相邻两行）
 						filteredLines = append(filteredLines, lines[i])
 						if i+1 < len(lines) {

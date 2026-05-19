@@ -108,7 +108,7 @@ func SetupRoutes(cfg *config.Config, router *gin.Engine, minioRepo filerepo.MinI
 	// API分组
 	api := router.Group("/api")
 	{
-		// articles
+		// 文章相关路由
 		articles := api.Group("/articles")
 		{
 			// 公开接口 - 无需认证
@@ -125,32 +125,32 @@ func SetupRoutes(cfg *config.Config, router *gin.Engine, minioRepo filerepo.MinI
 				adminArticles.Use(middleware.RoleMiddleware(utils.RoleAdmin))
 				{
 					// 创建文章
-					adminArticles.POST("/create", articleController.CreateArticle)
+					adminArticles.POST("", articleController.CreateArticle)
 					// 更新文章
-					adminArticles.PUT("/update/:id", articleController.UpdateArticle)
+					adminArticles.PUT("/:id", articleController.UpdateArticle)
 					// 删除文章
-					adminArticles.DELETE("/delete/:id", articleController.DeleteArticle)
+					adminArticles.DELETE("/:id", articleController.DeleteArticle)
 				}
 			}
 		}
 		// 领域类型相关路由
-		policyFieldType := api.Group("/fieldType")
+		fieldTypes := api.Group("/field-types")
 		{
 			// 查询领域类型列表（不分页）
-			policyFieldType.GET("", fieldTypeController.GetFieldType)
-			authFieldType := policyFieldType.Group("")
-			authFieldType.Use(middleware.AuthMiddleware(cfg))
+			fieldTypes.GET("", fieldTypeController.GetFieldType)
+			authFieldTypes := fieldTypes.Group("")
+			authFieldTypes.Use(middleware.AuthMiddleware(cfg))
 			{
 				// 管理员接口 - 在认证基础上增加角色校验
-				adminFieldType := authFieldType.Group("")
-				adminFieldType.Use(middleware.RoleMiddleware(utils.RoleAdmin))
+				adminFieldTypes := authFieldTypes.Group("")
+				adminFieldTypes.Use(middleware.RoleMiddleware(utils.RoleAdmin))
 				{
 					// 创建领域类型
-					adminFieldType.POST("/create", fieldTypeController.CreateFieldType)
+					adminFieldTypes.POST("", fieldTypeController.CreateFieldType)
 					// 更新领域类型
-					adminFieldType.PUT("/update/:id", fieldTypeController.UpdateFieldType)
+					adminFieldTypes.PUT("/:id", fieldTypeController.UpdateFieldType)
 					// 删除领域类型
-					adminFieldType.DELETE("/DeleteFieldType/:id", fieldTypeController.UpdateFieldType)
+					adminFieldTypes.DELETE("/:id", fieldTypeController.UpdateFieldType)
 				}
 			}
 		}
@@ -161,192 +161,197 @@ func SetupRoutes(cfg *config.Config, router *gin.Engine, minioRepo filerepo.MinI
 		// 	notice.GET("/:id", noticeController.GetNoticeContent)
 		// }
 		// 用户相关路由
-		user := api.Group("/user")
+		users := api.Group("/users")
 		{
 			// 公开接口 - 无需认证
 			// 登录
-			user.POST("/login", userController.Login)
+			users.POST("/login", userController.Login)
 			// 后台系统登录
-			user.POST("/bgLogin", userController.BgLogin)
+			users.POST("/bg-login", userController.BgLogin)
 			// 刷新token接口
-			user.POST("/refreshToken", userController.BgRefreshToken)
+			users.POST("/refresh-token", userController.BgRefreshToken)
 			// 需要认证的用户接口
-			authUser := user.Group("")
-			authUser.Use(middleware.AuthMiddleware(cfg))
+			authUsers := users.Group("")
+			authUsers.Use(middleware.AuthMiddleware(cfg))
 			{
-				// 更新当前用户信息
-				authUser.PUT("/update", userController.UpdateUserInfo)
 				// 获取当前用户信息
-				authUser.GET("/info", userController.GetUserInfo)
+				authUsers.GET("/me", userController.GetUserInfo)
+				// 更新当前用户信息
+				authUsers.PUT("/me", userController.UpdateUserInfo)
 				// 退出登录
-				authUser.POST("/logout", userController.Logout)
+				authUsers.POST("/logout", userController.Logout)
 				// 管理员接口 - 在认证基础上增加角色校验
-				adminUser := authUser.Group("")
-				adminUser.Use(middleware.RoleMiddleware(utils.RoleAdmin))
+				adminUsers := authUsers.Group("")
+				adminUsers.Use(middleware.RoleMiddleware(utils.RoleAdmin))
 				{
 					// 分页查询系统用户列表
-					adminUser.GET("/listAll", userController.ListAllUsers)
+					adminUsers.GET("", userController.ListAllUsers)
 				}
 				// 超级管理员接口
-				superAdmin := authUser.Group("")
+				superAdmin := authUsers.Group("")
 				superAdmin.Use(middleware.RoleMiddleware(utils.RoleSuperAdmin))
 				{
 					// 新增管理员接口
-					adminUser.POST("/createAdmin", userController.CreateAdminUser)
+					superAdmin.POST("", userController.CreateAdminUser)
 					// 禁用/启用管理员接口
-					adminUser.PUT("/updateStatus/:id", userController.UpdateAdminStatus)
+					superAdmin.PATCH("/:id/status", userController.UpdateAdminStatus)
 					// 更新管理员信息
-					adminUser.PUT("/update/:id", userController.UpdateAdminUser)
+					superAdmin.PUT("/:id", userController.UpdateAdminUser)
 				}
 			}
 		}
 		// 行业路由
-		industry := api.Group("/industry")
+		industries := api.Group("/industries")
 		{
 			// 公开接口 - 无需认证
 			// 获取行业列表（不分页）
-			industry.GET("", industryController.ListIndustries)
+			industries.GET("", industryController.ListIndustries)
 			// 需要认证的用户接口
-			authIndustry := industry.Group("")
-			authIndustry.Use(middleware.AuthMiddleware(cfg))
+			authIndustries := industries.Group("")
+			authIndustries.Use(middleware.AuthMiddleware(cfg))
 			{
 				// 管理员接口 - 在认证基础上增加角色校验
-				adminIndustry := authIndustry.Group("")
-				adminIndustry.Use(middleware.RoleMiddleware(utils.RoleAdmin))
+				adminIndustries := authIndustries.Group("")
+				adminIndustries.Use(middleware.RoleMiddleware(utils.RoleAdmin))
 				{
 					// 创建行业
-					adminIndustry.POST("/create", industryController.CreateIndustry)
+					adminIndustries.POST("", industryController.CreateIndustry)
 					// 更新行业
-					adminIndustry.PUT("/update/:id", industryController.UpdateIndustry)
+					adminIndustries.PUT("/:id", industryController.UpdateIndustry)
 				}
 			}
 		}
 		// 用户角色路由
-		userRole := api.Group("/userRole")
+		userRoles := api.Group("/user-roles")
 		{
 			// 获取用户角色列表（不分页）
-			userRole.GET("", middleware.RoleMiddleware(utils.RoleAdmin), userRoleController.List)
+			userRoles.GET("", middleware.RoleMiddleware(utils.RoleAdmin), userRoleController.List)
 		}
-		// 文件上传路由
-		file := api.Group("/file")
-		file.Use(middleware.AuthMiddleware(cfg))
+		// 文件相关路由
+		files := api.Group("/files")
+		files.Use(middleware.AuthMiddleware(cfg))
 		{
 			// 上传文件
-			file.POST("/upload", fileController.UploadFile)
+			files.POST("", fileController.UploadFile)
 			// 删除文件
-			file.DELETE("/deleteImage/:id", fileController.DeleteImage)
-
+			files.DELETE("/:id", fileController.DeleteImage)
 		}
 		// 消息相关路由
-		message := api.Group("/message")
-		message.Use(middleware.AuthMiddleware(cfg))
+		messages := api.Group("/messages")
+		messages.Use(middleware.AuthMiddleware(cfg))
 		{
 			// 获取消息详情
-			message.GET("/:id", msgController.GetMessageContent)
+			messages.GET("/:id", msgController.GetMessageContent)
 			// 查询是否有未读消息
-			message.GET("/hasUnreadMessages", msgController.HasUnreadMessages)
+			messages.GET("/unread", msgController.HasUnreadMessages)
 			// 标记所有消息为已读
-			message.PUT("/markAllAsRead", msgController.MarkAllMessagesAsRead)
+			messages.PATCH("/read", msgController.MarkAllMessagesAsRead)
 			// 分页查询用户消息群组列表
-			message.GET("/userMessageGroups", msgController.ListUserMessageGroups)
+			messages.GET("/groups", msgController.ListUserMessageGroups)
 			// 分页查询组内消息列表
-			message.GET("/byGroups/:id", msgController.ListMsgByGroups)
+			messages.GET("/groups/:id/messages", msgController.ListMsgByGroups)
 			// 消息群组管理，仅管理员可操作
-			adminMessage := message.Group("")
-			adminMessage.Use(middleware.RoleMiddleware(utils.RoleAdmin))
+			adminMessages := messages.Group("")
+			adminMessages.Use(middleware.RoleMiddleware(utils.RoleAdmin))
 			{
 				// 根据消息群组ID查询消息列表
-				adminMessage.GET("/allByGroupID/:id", msgController.ListMessagesByGroupID)
+				adminMessages.GET("/groups/:id/all", msgController.ListMessagesByGroupID)
 				// 分页获取消息群组列表
-				adminMessage.GET("/messageGroups", msgGroupController.ListMsgGroups)
+				adminMessages.GET("/groups", msgGroupController.ListMsgGroups)
 				// 分页获取指定群组内用户列表
-				adminMessage.GET("/groupUsers/:id", msgGroupController.ListGroupsUsers)
+				adminMessages.GET("/groups/:id/users", msgGroupController.ListGroupsUsers)
 				// 分页获取不在指定组内的用户列表
-				adminMessage.GET("/notIngroupUsers/:id", msgGroupController.ListNotInGroupUsers)
+				adminMessages.GET("/groups/:id/users/not-in", msgGroupController.ListNotInGroupUsers)
 				// 根据id获取指定消息群组信息
-				adminMessage.GET("/groupDetail/:id", msgGroupController.GetMsgGroupByID)
+				adminMessages.GET("/groups/:id", msgGroupController.GetMsgGroupByID)
 				// 创建消息群组
-				adminMessage.POST("/createGroup", msgGroupController.CreateMsgGroup)
+				adminMessages.POST("/groups", msgGroupController.CreateMsgGroup)
 				// 将用户添加到指定群组
-				adminMessage.POST("/addUserToGroup/:id", msgGroupController.AddUserToGroup)
+				adminMessages.POST("/groups/:id/members", msgGroupController.AddUserToGroup)
 				// 向指定群组发送消息
-				adminMessage.POST("/sendMessage/:id", msgController.SendMessage)
+				adminMessages.POST("/groups/:id/messages", msgController.SendMessage)
 				// 更新指定群组信息
-				adminMessage.PUT("/updateGroup/:id", msgGroupController.UpdateMsgGroup)
+				adminMessages.PUT("/groups/:id", msgGroupController.UpdateMsgGroup)
 				// 撤销指定消息
-				adminMessage.DELETE("/revokeMessage/:id", msgController.RevokeGroupMessage)
+				adminMessages.DELETE("/:id", msgController.RevokeGroupMessage)
 				// 从指定群组移除用户
-				adminMessage.DELETE("/removeUserFromGroup/:id", msgGroupController.DeleteUserFromGroup)
+				adminMessages.DELETE("/groups/:id/members", msgGroupController.DeleteUserFromGroup)
 				// 删除群组
-				adminMessage.DELETE("/deleteGroup/:id", msgGroupController.DeleteMsgGroup)
+				adminMessages.DELETE("/groups/:id", msgGroupController.DeleteMsgGroup)
 			}
 		}
 		// 活动相关路由
-		event := api.Group("/event")
+		events := api.Group("/events")
 		{
 			// 公开接口 - 无需认证
 			// 分页查询活动列表
-			event.GET("", eventController.ListEvent)
+			events.GET("", eventController.ListEvent)
 			// 获取指定活动详情
-			event.GET("/:id", eventController.GetEventDetail)
+			events.GET("/:id", eventController.GetEventDetail)
 
 			// 需要认证的用户接口
-			authEvent := event.Group("")
-			authEvent.Use(middleware.AuthMiddleware(cfg))
+			authEvents := events.Group("")
+			authEvents.Use(middleware.AuthMiddleware(cfg))
 			{
 				// 报名活动
-				authEvent.POST("/registration", eventController.RegistrationEvent)
+				authEvents.POST("/:id/registrations", eventController.RegistrationEvent)
 				// 查询当前用户是否报名指定活动
-				authEvent.GET("/isUserRegistered/:id", eventController.IsUserRegistered)
+				authEvents.GET("/:id/registration", eventController.IsUserRegistered)
 				// 取消报名活动
-				authEvent.DELETE("/cancelRegistration/:id", eventController.CancelRegistrationEvent)
+				authEvents.DELETE("/:id/registrations", eventController.CancelRegistrationEvent)
 				// 获取当前用户已报名的活动列表
-				authEvent.GET("/userRegisteredEvents", eventController.ListUserRegisteredEvents)
+				authEvents.GET("/registered", eventController.ListUserRegisteredEvents)
 
 				// 管理员接口 - 在认证基础上增加角色校验
-				adminEvent := authEvent.Group("")
-				adminEvent.Use(middleware.RoleMiddleware(utils.RoleAdmin))
+				adminEvents := authEvents.Group("")
+				adminEvents.Use(middleware.RoleMiddleware(utils.RoleAdmin))
 				{
 					// 创建活动
-					adminEvent.POST("/create", eventController.CreateEvent)
+					adminEvents.POST("", eventController.CreateEvent)
 					// 更新活动
-					adminEvent.PUT("/update/:id", eventController.UpdateEvent)
+					adminEvents.PUT("/:id", eventController.UpdateEvent)
 					// 删除活动
-					adminEvent.DELETE("/delete/:id", eventController.DeleteEvent)
+					adminEvents.DELETE("/:id", eventController.DeleteEvent)
 					// 分页查询报名指定活动的用户列表
-					adminEvent.GET("/regUsers/:id", eventController.ListEventRegisteredUsers)
-					// 创建用户信息字段
-					adminEvent.POST("/createUserInfo", eventUserInfoController.Create)
-					// 更新用户信息字段
-					adminEvent.PUT("/updateUserInfo/:id", eventUserInfoController.Update)
-					// 更新用户信息字段状态
-					adminEvent.PUT("/updateUserInfoStatus/:id", eventUserInfoController.UpdateStatus)
+					adminEvents.GET("/:id/registrations/users", eventController.ListEventRegisteredUsers)
 					// 查询用户信息字段列表
-					adminEvent.GET("/userInfo", eventUserInfoController.List)
+					adminEvents.GET("/user-info-fields", eventUserInfoController.List)
+					// 创建用户信息字段
+					adminEvents.POST("/user-info-fields", eventUserInfoController.Create)
+					// 更新用户信息字段
+					adminEvents.PUT("/user-info-fields/:id", eventUserInfoController.Update)
+					// 更新用户信息字段状态
+					adminEvents.PATCH("/user-info-fields/:id/status", eventUserInfoController.UpdateStatus)
 				}
 			}
 		}
-		// 聊天相关路由 (新)
+		// 聊天相关路由
 		chat := api.Group("/chat")
-		//chat.GET("/ws/:groupId", chatController.ServeWs)
 		{
 			// WebSocket 连接端点需要认证
 			authChat := chat.Group("")
 			authChat.Use(middleware.AuthMiddleware(cfg))
 			{
+				// WebSocket连接
 				authChat.GET("/ws/:groupId", chatController.ServeWs)
-				authChat.GET("/ws/notifications", chatController.ServeNotificationWs) // 个人通知频道
+				// 个人通知频道
+				authChat.GET("/ws/notifications", chatController.ServeNotificationWs)
 				// 群组管理
 				authChat.POST("/groups", chatGroupController.CreateGroup)
 				authChat.GET("/groups", chatGroupController.ListUserGroups)
 				authChat.GET("/groups/:groupId/members", chatGroupController.ListGroupMembers)
-				authChat.GET("/groups/:groupId/notInMembers", chatGroupController.GetUsersNotInGroup)
+				authChat.GET("/groups/:groupId/not-in-members", chatGroupController.GetUsersNotInGroup)
 				authChat.GET("/groups/:groupId/messages", chatGroupController.ListGroupMessages)
 				authChat.POST("/groups/:groupId/members", chatGroupController.AddMembers)
 				authChat.DELETE("/groups/:groupId/members", chatGroupController.RemoveMembers)
 				authChat.GET("/unread", chatGroupController.HasUnreadMessages)
 				authChat.DELETE("/groups/:groupId", chatGroupController.DeleteGroup)
-				authChat.GET("/allGroups", chatGroupController.ListAllGroups)
+				// 管理员接口 - 查询所有群组
+				adminChat := authChat.Group("")
+				adminChat.Use(middleware.RoleMiddleware(utils.RoleAdmin))
+				{
+					adminChat.GET("/groups/all", chatGroupController.ListAllGroups)
+				}
 			}
 		}
 		// Agent 智能助手相关路由
@@ -433,7 +438,7 @@ func SetupRoutes(cfg *config.Config, router *gin.Engine, minioRepo filerepo.MinI
 
 				// LLM配置 - 用户可设置自己的偏好
 				authAgent.GET("/llm-configs", agentLLMConfigController.ListConfigs)
-				authAgent.POST("/llm-configs/user-preference", agentLLMConfigController.SetUserLLM)
+				authAgent.PUT("/llm-configs/user-preference", agentLLMConfigController.SetUserLLM)
 
 				// 管理员接口 - LLM配置管理
 				adminAgent := authAgent.Group("")
